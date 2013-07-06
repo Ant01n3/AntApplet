@@ -14,6 +14,7 @@ import akka.actor.{Actor, Props, ActorSystem, ReceiveTimeout, ActorRef}
 import scala.concurrent.duration._
 import scala.collection.JavaConversions._
 import scala.language.postfixOps
+import scala.math._
 
 
 /** Launch the application. */
@@ -177,8 +178,10 @@ class GraphActor extends Actor {
 	/** Utility method to compute all the possible edges to explore from a given node.
 	  * Only outgoing edges are selected. The returned array contains pairs of edge
 	  * identifiers and their lengths. */
-	protected def possibleEdges(node:Node):Array[(String,Double)] = {
-		(node.getLeavingEdgeSet[Edge].map { edge => (edge.getId, edge.getNumber(Ph)) }).toArray
+	protected def possibleEdges(node:Node):Array[(String,Double,Double)] = {
+		(node.getLeavingEdgeSet[Edge].map { edge =>
+			(edge.getId, edge.getNumber(Ph), GraphPosLengthUtils.edgeLength(edge)) 
+		}).toArray
 	}		
 
 	/** Utility method to get the pheromone level on an edge. */
@@ -213,7 +216,9 @@ class GraphActor extends Actor {
 		}
 	}
 
-	protected def nodePosition(node:Node, x:Int, y:Int) { node.setAttribute("xy", x.asInstanceOf[java.lang.Integer], y.asInstanceOf[java.lang.Integer]) }
+	protected def nodePosition(node:Node, x:Int, y:Int) {
+		node.setAttribute("xy", x.asInstanceOf[java.lang.Integer], y.asInstanceOf[java.lang.Integer]) 
+	}
 
 	/** Apply evaporation on each edge. */
 	protected def evaporate() {
@@ -266,15 +271,15 @@ class GraphActor extends Actor {
 			antSprite.addAttribute("ui.class", "back")
 			antSprite.controller ! Ant.AtIntersection(null)
 		}
-		case AntCrosses(antId, edgeId, ph) => {
+		case AntCrosses(antId, edgeId, drop) => {
 			fromViewer.pump
 			val length = GraphPosLengthUtils.edgeLength(graph, edgeId)
 			val sprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
 
 			sprite.cross(edgeId, length)
 
-			if(ph > 0)
-				dropPheromone(ph, sprite.getAttachment.asInstanceOf[Edge])
+			if(drop > 0)
+				dropPheromone(drop, sprite.getAttachment.asInstanceOf[Edge])
 		}
 		case _ => {
 			println("Graph: WTF ??")
@@ -296,9 +301,15 @@ object Ant {
 	/** Quantity of pheromone ants drop on edges. */
 	final val phDrop = 0.1
 
-	/** The ant reached an intersection. The data is a set of pairs of edge
-	  * identifiers and lengths. */
-	case class AtIntersection(edges:Array[(String,Double)])
+	/** Relative importance of pheromones when ants choose a path. */
+	final val Alpha = 2.0
+
+	/** Relative importance of edge length when ants choose a path (greedy algorithm). */
+	final val Beta = 1.5
+
+	/** The ant reached an intersection. The data is a set of triplets (edge
+	  * identifier, pheromone level, length). */
+	case class AtIntersection(edges:Array[(String,Double,Double)])
 
 	/** The ant reached a food source. */
 	case class AtFood()
@@ -330,17 +341,17 @@ class Ant extends Actor {
 	def receive() = {
 		case AtIntersection(edges) => {
 			var edge:String = null
-			var ph:Double = 0.0
+			var drop:Double = 0.0
 
 			if(goingBack) {
 				edge = memory.pop
-				ph = phDrop
+				drop = phDrop
 			} else {
 				edge = chooseNextEdge(edges)
 				memory.push(edge)
 			}
 			
-			sender ! GraphActor.AntCrosses(self.path.name, edge, ph)
+			sender ! GraphActor.AntCrosses(self.path.name, edge, drop)
 		}
 		case AtFood => {
 			goingBack = true
@@ -355,27 +366,37 @@ class Ant extends Actor {
 		}
 	}
 
-	def chooseNextEdgeRandom(edges:Array[(String,Double)]):String = { edges(random.nextInt(edges.length))._1 }
+	def chooseNextEdgeRandom(edges:Array[(String,Double,Double)]):String = { edges(random.nextInt(edges.length))._1 }
 	
-	def chooseNextEdge(edges:Array[(String,Double)]):String = {
-//val buf = new StringBuilder()
-//buf ++= "%s choose next { ".format(self.path.name)
+	def chooseNextEdge(edges:Array[(String,Double,Double)]):String = {
+val buf = new StringBuilder()
+buf ++= "%s choose next { ".format(self.path.name)
 		var sum = 0.0
 		var rnd = random.nextDouble
 
-		edges.foreach { edge => /*buf++="%s:%.2f ".format(edge._1,edge._2);*/ sum += edge._2 }
+		var weights = edges.map { edge =>
+			val weight = pow(edge._2, Alpha) * pow(1/edge._3, Beta)
+			buf ++= "%s:%.2f".format(edge._1, weight)
+			sum += weight
+			(edge._1, weight)
+		}
+		//edges.foreach { edge => buf++="%s:%.2f ".format(edge._1,edge._2); sum += pow(edge._2, Alpha) * pow(1/edge._3, Beta) }
 
 		if(sum <= 0) {
-//buf++="} -> random"
-//println(buf)
+buf++="} -> random"
+println(buf)
 			chooseNextEdgeRandom(edges)
 		} else {
-//buf++="-> sum=%.2f rnd=%.2f (sum=%.2f) (%d) {".format(sum, rnd, sum*rnd, edges.length)
+buf++="-> sum=%.2f rnd=%.2f (sum=%.2f) (%d) {".format(sum, rnd, sum*rnd, edges.length)
 			sum *= rnd
 			var tot = 0.0
-			edges.find { edge => tot += edge._2; /*buf++=" %.2f".format(tot);*/ tot >= sum } match {
-				case Some(x) => /*buf++=" } %s chooses %s".format(self.path.name, x._1); println(buf);*/ x._1
-				case None    => /*buf++="WTF"; println(buf);*/ ""
+			// edges.find { edge => tot += edge._2; buf++=" %.2f".format(tot); tot >= sum } match {
+			// 	case Some(x) => buf++=" } %s chooses %s".format(self.path.name, x._1); println(buf); x._1
+			// 	case None    => buf++=" %s WTF".format(self.path.name); println(buf); ""
+			// }
+			weights.find { edge => tot += edge._2; buf++=" %.2f".format(tot); tot >= sum } match {
+				case Some(e) => buf++=" } %s chooses %s".format(self.path.name, e._1); println(buf); e._1
+				case None    => buf++=" %s WTF".format(self.path.name); println(buf); ""
 			}
 		}
 	}
