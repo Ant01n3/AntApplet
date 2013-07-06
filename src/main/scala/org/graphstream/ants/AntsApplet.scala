@@ -4,6 +4,7 @@ import scala.compat.Platform
 import scala.collection.mutable.{HashMap, ArrayBuffer, Stack}
 import org.graphstream.graph.{Node, Edge}
 import org.graphstream.graph.implementations.SingleGraph
+import org.graphstream.stream.file.FileSourceDGS
 import org.graphstream.ui.swingViewer.{Viewer, ViewerPipe}
 import org.graphstream.ui.graphicGraph.GraphPosLengthUtils
 import org.graphstream.ui.graphicGraph.stylesheet.Values
@@ -112,6 +113,9 @@ object GraphActor {
 
 	/** The ant `antId` goes back to the nest. */
 	case class AntGoesBack(antId:String)
+
+	/** Pheromone attribute. */
+	final val Ph = "ph"
 }
 
 
@@ -157,70 +161,32 @@ class GraphActor extends Actor {
 	}
 
 	protected def initGraph() {
-		nest       = graph.addNode("Nest")
-		food       = graph.addNode("Food")
-		val a:Node = graph.addNode("A")
-		val b:Node = graph.addNode("B")
-		val c:Node = graph.addNode("C")
-		val d:Node = graph.addNode("D")
-		val e:Node = graph.addNode("E")
-		val f:Node = graph.addNode("F")
-		val g:Node = graph.addNode("G")
-		val h:Node = graph.addNode("H")
+		val url = getClass.getResource("/TwoBridges.dgs")
+		var src = new FileSourceDGS
 
-		nest.addAttribute("ui.class", "nest")
-		nest.addAttribute("ui.label", "Nest")
-		food.addAttribute("ui.class", "food")
-		food.addAttribute("ui.label", "Food")
+		src.addSink(graph)
+		src.readAll(url)
+		src.removeSink(graph)
 
-		val nesta:Edge = graph.addEdge("NestA", nest, a, true)
-		val ab:Edge    = graph.addEdge("AB", a, b, true)
-		val ac:Edge    = graph.addEdge("AC", a, c, true)
-		val bd:Edge    = graph.addEdge("BD", b, d, true)
-		val cd:Edge    = graph.addEdge("CD", c, d, true)
-		val de:Edge    = graph.addEdge("DE", d, e, true)
-		val ef:Edge    = graph.addEdge("EF", e, f, true)
-		val eg:Edge    = graph.addEdge("EG", e, g, true)
-		val fh:Edge    = graph.addEdge("FH", f, h, true)
-		val gh:Edge    = graph.addEdge("GH", g, h, true)
-		val hfood:Edge = graph.addEdge("HFood", h, food, true)
+		nest = graph.getNode("Nest")
+		food = graph.getNode("Food")
 
-		nodePosition(nest, 0,  0)
-		nodePosition(food, 0, -7)
-		nodePosition(a,    0, -1)
-		nodePosition(b,   -1, -2)
-		nodePosition(c,    3, -2)
-		nodePosition(d,    0, -3)
-		nodePosition(e,    0, -4)
-		nodePosition(f,   -3, -5)
-		nodePosition(g,    1, -5)
-		nodePosition(h,    0, -6)
-
-		graph.getEachEdge.foreach { edge:Edge => edge.addAttribute("ph", (0.0).asInstanceOf[AnyRef]) }
-
-		graph.addAttribute("ui.title", "Ants !")
-		graph.addAttribute("ui.antialias")
-		graph.addAttribute("ui.stylesheet", """
-				node { fill-color: grey; } node.nest { size: 15px; fill-color: grey; } node.food { size: 15px; fill-color: green; }
-				edge { arrow-shape: none; size: 5px; fill-mode: dyn-plain; fill-color: grey, green, orange, red; }
-				sprite { fill-color: red; }
-				sprite.back { fill-color: green; }
-			""")		
+		graph.getEachEdge.foreach { edge:Edge => edge.addAttribute(Ph, (0.0).asInstanceOf[AnyRef]) }
 	}
 
 	/** Utility method to compute all the possible edges to explore from a given node.
 	  * Only outgoing edges are selected. The returned array contains pairs of edge
 	  * identifiers and their lengths. */
 	protected def possibleEdges(node:Node):Array[(String,Double)] = {
-		(node.getLeavingEdgeSet[Edge].map { edge => (edge.getId, edge.getNumber("ph")) }).toArray
+		(node.getLeavingEdgeSet[Edge].map { edge => (edge.getId, edge.getNumber(Ph)) }).toArray
 	}		
 
 	/** Utility method to get the pheromone level on an edge. */
-	protected def getPh(edge:Edge):Double = edge.getNumber("ph")
+	protected def getPh(edge:Edge):Double = edge.getNumber(Ph)
 
 	/** Utility method to store some pheromone quantity `ph` on an edge. */
 	protected def updatePh(ph:Double, edge:Edge) {
-		edge.setAttribute("ph", ph.asInstanceOf[AnyRef])
+		edge.setAttribute(Ph, ph.asInstanceOf[AnyRef])
 		edge.setAttribute("ui.label", "%.2f".format(ph))
 		edge.setAttribute("ui.color", (ph/Ant.MaxPh).asInstanceOf[AnyRef])
 	}
