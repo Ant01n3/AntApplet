@@ -117,6 +117,9 @@ object GraphActor {
 
 	/** Pheromone attribute. */
 	final val Ph = "ph"
+
+	/** Ant count. */
+	final val AntCount = 10
 }
 
 
@@ -156,7 +159,6 @@ class GraphActor extends Actor {
 
         fromViewer.addSink(graph)
 		initGraph
-		initAnts(20)
 		fromViewer.pump
 		context.setReceiveTimeout(40 milliseconds)	// Update the graph from the viewer every 40ms.
 	}
@@ -202,18 +204,20 @@ class GraphActor extends Actor {
 		updatePh(phe, edge)
 	}
 
-	/** Create `count` ants on the nest node. */
-	protected def initAnts(count:Int) {
-		val edges = possibleEdges(nest)
-		
-		for(i <- 0 until count) {
-			val id = "ant%d".format(i)
-
-			val sprite = sprites.addSprite(id).asInstanceOf[AntSprite]
-
-			sprite.controller = context.actorOf(Props[Ant], name=id)
-			sprite.controller ! Ant.AtIntersection(edges)
+	/** Create a new ant if the total count is not reached. */
+	protected def hatchAnts() {
+		if(sprites.getSpriteCount < AntCount) {
+			hatchAnt
 		}
+	}
+
+	/** Create an ant on the nest. */
+	protected def hatchAnt() {
+		val id     = "ant%d".format(sprites.getSpriteCount)
+		val sprite = sprites.addSprite(id).asInstanceOf[AntSprite]
+
+		sprite.controller = context.actorOf(Props[Ant], name=id)
+		sprite.controller ! Ant.AtIntersection(possibleEdges(nest))
 	}
 
 	protected def nodePosition(node:Node, x:Int, y:Int) {
@@ -256,6 +260,7 @@ class GraphActor extends Actor {
 	def receive() = {
 		case ReceiveTimeout => {
 			fromViewer.pump
+			hatchAnts
 			evaporate
 			runSprites
 		}
@@ -369,34 +374,34 @@ class Ant extends Actor {
 	def chooseNextEdgeRandom(edges:Array[(String,Double,Double)]):String = { edges(random.nextInt(edges.length))._1 }
 	
 	def chooseNextEdge(edges:Array[(String,Double,Double)]):String = {
-val buf = new StringBuilder()
-buf ++= "%s choose next { ".format(self.path.name)
+//val buf = new StringBuilder()
+//buf ++= "%s choose next { ".format(self.path.name)
 		var sum = 0.0
 		var rnd = random.nextDouble
 
 		var weights = edges.map { edge =>
 			val weight = pow(edge._2, Alpha) * pow(1/edge._3, Beta)
-			buf ++= "%s:%.2f".format(edge._1, weight)
+//			buf ++= "%s:%.2f ".format(edge._1, weight)
 			sum += weight
 			(edge._1, weight)
 		}
 		//edges.foreach { edge => buf++="%s:%.2f ".format(edge._1,edge._2); sum += pow(edge._2, Alpha) * pow(1/edge._3, Beta) }
 
 		if(sum <= 0) {
-buf++="} -> random"
-println(buf)
+//buf++="} -> random"
+//println(buf)
 			chooseNextEdgeRandom(edges)
 		} else {
-buf++="-> sum=%.2f rnd=%.2f (sum=%.2f) (%d) {".format(sum, rnd, sum*rnd, edges.length)
+//buf++="-> sum=%.2f rnd=%.2f (sum=%.2f) (%d) {".format(sum, rnd, sum*rnd, edges.length)
 			sum *= rnd
 			var tot = 0.0
 			// edges.find { edge => tot += edge._2; buf++=" %.2f".format(tot); tot >= sum } match {
 			// 	case Some(x) => buf++=" } %s chooses %s".format(self.path.name, x._1); println(buf); x._1
 			// 	case None    => buf++=" %s WTF".format(self.path.name); println(buf); ""
 			// }
-			weights.find { edge => tot += edge._2; buf++=" %.2f".format(tot); tot >= sum } match {
-				case Some(e) => buf++=" } %s chooses %s".format(self.path.name, e._1); println(buf); e._1
-				case None    => buf++=" %s WTF".format(self.path.name); println(buf); ""
+			weights.find { edge => tot += edge._2; /*buf++=" %.2f".format(tot);*/ tot >= sum } match {
+				case Some(e) => /*buf++=" } %s chooses %s".format(self.path.name, e._1); println(buf);*/ e._1
+				case None    => /*buf++=" %s WTF".format(self.path.name); println(buf);*/ ""
 			}
 		}
 	}
