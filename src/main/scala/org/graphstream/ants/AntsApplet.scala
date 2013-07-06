@@ -144,9 +144,6 @@ class GraphActor extends Actor {
 	/** Shortcut to the nest node. */
 	var nest:Node = null
 
-	/** Shortcut to the food node. */
-	var food:Node = null
-
 	init
 
 	protected def init() {
@@ -172,7 +169,6 @@ class GraphActor extends Actor {
 		src.removeSink(graph)
 
 		nest = graph.getNode("Nest")
-		food = graph.getNode("Food")
 
 		graph.getEachEdge.foreach { edge:Edge => edge.addAttribute(Ph, (0.0).asInstanceOf[AnyRef]) }
 	}
@@ -240,13 +236,13 @@ class GraphActor extends Actor {
 			val antSprite = sprite.asInstanceOf[AntSprite]
 			if(antSprite.run) {
 				if(antSprite.goingBack) {
-					if(antSprite.endPoint == nest) {
+					if(antSprite.endPoint.hasAttribute("nest")) {
 						antSprite.controller ! Ant.AtNest
 					} else {
 						antSprite.controller ! Ant.AtIntersection(null)
 					}
 				} else {
-					if(antSprite.endPoint == food) {
+					if(antSprite.endPoint.hasAttribute("food")) {
 						antSprite.controller ! Ant.AtFood
 					} else {
 						antSprite.controller ! Ant.AtIntersection(possibleEdges(antSprite.endPoint))

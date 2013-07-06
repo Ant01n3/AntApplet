@@ -1,8 +1,8 @@
 DGS004
 "" 0 0
 
-an Nest ui.class="nest" ui.label="Nest" x=0 y=0
-an Food ui.class="food" ui.label="Food" x=0 y=-7
+an Nest nest ui.class="nest" ui.label="Nest" x=0 y=0
+an Food food ui.class="food" ui.label="Food" x=0 y=-7
 
 an A x=0 y=-1
 an B x=-1 y=-2
