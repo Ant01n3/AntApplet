@@ -3,7 +3,10 @@ Ant Applet
 
 A very simple program that tries to demonstrate how ants find the shortest path between a nest and one (or more) food sources.
 
-The program uses Scala and the actor model to represent the ants. It uses GraphStream to represent an environment actor (a graph representing the possible paths for the ants). Then each ant is an actor that takes decision each time it encounters an intersection based on informations stored on the edges.
+The program uses Scala and the actor model to represent the ants. It uses GraphStream to represent an environment actor (a graph representing the possible paths for the ants). Then each ant is an actor that takes decision each time it encounters an intersection based on informations stored on the edges. Ants use the a model inspired of the works of Jean-Louis Deneubourg and Marco Dorigo.
+
+Installation and use
+--------------------
 
 To get it:
 
@@ -116,5 +119,7 @@ Then each ant is also an actor that travels on the graph. The ants actor only ro
 
 The environment actor takes care of sending ants events like you are at an intersection, or you are on the food, and the ants answer with their choices.
 
-TODO give details and diagrams.
+The model for the ant behavior is inspired by works from Jean-Louis Deneubourg and Marco Dorigo... TODO
+
+TODO give details, explain the model, the actor implementation and give diagrams.
 
