@@ -192,8 +192,11 @@ class GraphActor() extends Actor {
 			throw new RuntimeException("You must provide a node with attribute 'nest' in the graph")
 		}
 
-		if(graph.hasNumber("antCount"))
-			antCount = graph.getNumber("antCount").toInt
+		if(graph.hasNumber("antCount"))    antCount        = graph.getNumber("antCount").toInt
+		if(graph.hasNumber("evaporation")) Ant.evaporation = graph.getNumber("evaporation")
+		if(graph.hasNumber("alpha"))       Ant.alpha       = graph.getNumber("alpha")
+		if(graph.hasNumber("beta"))        Ant.beta        = graph.getNumber("beta")
+		if(graph.hasNumber("phDrop"))      Ant.phDrop      = graph.getNumber("phDrop")
 
 		graph.getEachEdge.foreach { edge:Edge => edge.addAttribute(Ph, (0.0).asInstanceOf[AnyRef]) }
 	}
@@ -214,14 +217,14 @@ class GraphActor() extends Actor {
 	protected def updatePh(ph:Double, edge:Edge) {
 		edge.setAttribute(Ph, ph.asInstanceOf[AnyRef])
 		edge.setAttribute("ui.label", "%.2f".format(ph))
-		edge.setAttribute("ui.color", (ph/Ant.MaxPh).asInstanceOf[AnyRef])
+		edge.setAttribute("ui.color", (ph/Ant.maxPh).asInstanceOf[AnyRef])
 	}
 
 	/** Utility method to read the phromone level of an edge and add to it the given
 	  * quantity `ph`. */
 	protected def dropPheromone(ph:Double, edge:Edge) {
 		var phe = ph + getPh(edge)
-		if(phe > Ant.MaxPh) phe = Ant.MaxPh
+		if(phe > Ant.maxPh) phe = Ant.maxPh
 		updatePh(phe, edge)
 	}
 
@@ -249,7 +252,7 @@ class GraphActor() extends Actor {
 	protected def evaporate() {
 		graph.getEachEdge.foreach { edge:Edge =>
 			var ph = getPh(edge)
-			ph *= Ant.Evaporation
+			ph *= Ant.evaporation
 			updatePh(ph, edge)
 		}
 	}
@@ -322,19 +325,19 @@ class GraphActor() extends Actor {
 
 object Ant {
 	/** Maximum pheromon level on edges. */
-	final val MaxPh = 3.0
+	var maxPh = 3.0
 
 	/** Pheromone conservation factor (not really evaporation, but as usual...). */
-	final val Evaporation = 0.999
+	var evaporation = 0.999
 
 	/** Quantity of pheromone ants drop on edges. */
-	final val PhDrop = 0.1
+	var phDrop = 0.1
 
 	/** Relative importance of pheromones when ants choose a path. */
-	final val Alpha = 2.0
+	var alpha = 2.0
 
 	/** Relative importance of edge length when ants choose a path (greedy algorithm). */
-	final val Beta = 1.5
+	var beta = 1.5
 
 	/** The ant reached an intersection. The data is a set of triplets (edge
 	  * identifier, pheromone level, length). */
@@ -375,7 +378,7 @@ class Ant extends Actor {
 
 			if(goingBack) {
 				edge = memory.pop
-				drop = PhDrop
+				drop = phDrop
 			} else {
 				edge = chooseNextEdge(edges)
 				memory.push(edge)
@@ -412,7 +415,7 @@ class Ant extends Actor {
 		// Compute the weights of each edge following Dorigo formula.
 
 		var weights = edges.map { edge =>
-			val weight = pow(edge._2, Alpha) * pow(1/edge._3, Beta)
+			val weight = pow(edge._2, alpha) * pow(1/edge._3, beta)
 			sum += weight
 			(edge._1, weight)
 		}

@@ -92,7 +92,13 @@ You can change the number of ants (by default 10) using the ``antCount`` attribu
 
     cg antCount=6
 
-The command ``cg`` (change graph) will add the attribute ``antCount`` with a number value.
+The command ``cg`` (change graph) will add the attribute ``antCount`` with a number value. The other settings that can be changed are:
+
+    cg alpha=2.0         # The relative pheromone importance.
+    cg beta=1.5          # The relative edge length importance.
+    cg evaporation=0.995 # The edge pheromone 'conservation' at each step.
+
+The values given above are the defaults. The evaporation rate is naturally tied to the number of ants.
 
 Finally you can change the appearance of the graph using a style sheet:
 
