@@ -25,6 +25,13 @@ object AntsApplet extends App {
 	
 	/** Initial actor launching all others. */
 	val graph = actorSystem.actorOf(Props[GraphActor], name="graph")
+
+	args.length match {
+		case 0 => graph ! GraphActor.Start("/TwoBridges.dgs", 10)
+		case 1 => graph ! GraphActor.Start(args(0), 10)
+		case _ => graph ! GraphActor.Start(args(0), args(1).toInt)
+	}
+	
 }
 
 
@@ -90,7 +97,7 @@ class AntSprite(id:String, manager:SpriteManager, initialPosition:Values) extend
 		arrived
 	}
 
-	/** End-point node of the current edge (depends on the direction of the ant). */
+	/** Utility method, end-point node of the current edge (depends on the direction of the ant). */
 	def endPoint():Node = {
 		if(goingBack)
 		     attachment.asInstanceOf[Edge].getSourceNode.asInstanceOf[Node]
@@ -104,6 +111,11 @@ class AntSprite(id:String, manager:SpriteManager, initialPosition:Values) extend
 
 /** Messages the graph actor can receive. */
 object GraphActor {
+	/** Start the graph environment actor and all ant sub-actors. The graph is
+	  * given as a resource. If null, the "/TwoBridges.dgs" resource is loaded.
+	  * The number of ants is also given and defaults to 10. */
+	case class Start(graphResource:String = "/TwoBridges.dgs", antCount:Int = 10)
+
 	/** The ant `antId` is now on edge `edgeId` at the start of it.
 	  * Most often this message comes after the graph sent a [[Ant.AtIntersection]]
 	  * message. */
@@ -117,16 +129,13 @@ object GraphActor {
 
 	/** Pheromone attribute. */
 	final val Ph = "ph"
-
-	/** Ant count. */
-	final val AntCount = 10
 }
 
 
 /** Represents the environment of the ants. Handles global behaviors like evaporation.
   * It also handle the GUI and the ants representation (but not the ant behavior that
   * is implemented in ant actors). */
-class GraphActor extends Actor {
+class GraphActor() extends Actor {
 	import GraphActor._
 
 	/** Ant environment. */
@@ -144,29 +153,40 @@ class GraphActor extends Actor {
 	/** Shortcut to the nest node. */
 	var nest:Node = null
 
-	init
+	/** Maximum number of ants. */
+	var antCount:Int = 0
 
-	protected def init() {
+	/** Start the actor and all ant sub-actors. */
+	protected def start(resource:String, count:Int) {
 		graph      = new SingleGraph("Ants")
 		viewer     = graph.display(false)
 		fromViewer = viewer.newViewerPipe()
         sprites    = new SpriteManager(graph)
+        antCount   = count
 
         sprites.setSpriteFactory(AntSprite)
 
         fromViewer.addSink(graph)
-		initGraph
+		loadGraph(resource)
 		fromViewer.pump
 		context.setReceiveTimeout(40 milliseconds)	// Update the graph from the viewer every 40ms.
 	}
 
-	protected def initGraph() {
-		val url = getClass.getResource("/TwoBridges.dgs")
+	/** Load the given graph `resource` and initialize pheromones and the nest on it. 
+	  * The nest must have identifier "Nest". */
+	protected def loadGraph(resource:String) {
+		var url = getClass.getResource(resource)
 		var src = new FileSourceDGS
 
 		src.addSink(graph)
-		src.readAll(url)
-		src.removeSink(graph)
+
+		if(url eq null) {
+			src.readAll(resource)
+		} else {
+			src.readAll(url)
+		}
+
+		src.removeSink(graph)			
 
 		nest = graph.getNode("Nest")
 
@@ -202,7 +222,7 @@ class GraphActor extends Actor {
 
 	/** Create a new ant if the total count is not reached. */
 	protected def hatchAnts() {
-		if(sprites.getSpriteCount < AntCount) {
+		if(sprites.getSpriteCount < antCount) {
 			hatchAnt
 		}
 	}
@@ -254,6 +274,9 @@ class GraphActor extends Actor {
 
 	/** Behavior. */
 	def receive() = {
+		case Start(resource, antCount) => {
+			start(resource, antCount)
+		}
 		case ReceiveTimeout => {
 			fromViewer.pump
 			hatchAnts
@@ -381,7 +404,6 @@ class Ant extends Actor {
 			sum += weight
 			(edge._1, weight)
 		}
-		//edges.foreach { edge => buf++="%s:%.2f ".format(edge._1,edge._2); sum += pow(edge._2, Alpha) * pow(1/edge._3, Beta) }
 
 		if(sum <= 0) {
 //buf++="} -> random"
@@ -391,10 +413,6 @@ class Ant extends Actor {
 //buf++="-> sum=%.2f rnd=%.2f (sum=%.2f) (%d) {".format(sum, rnd, sum*rnd, edges.length)
 			sum *= rnd
 			var tot = 0.0
-			// edges.find { edge => tot += edge._2; buf++=" %.2f".format(tot); tot >= sum } match {
-			// 	case Some(x) => buf++=" } %s chooses %s".format(self.path.name, x._1); println(buf); x._1
-			// 	case None    => buf++=" %s WTF".format(self.path.name); println(buf); ""
-			// }
 			weights.find { edge => tot += edge._2; /*buf++=" %.2f".format(tot);*/ tot >= sum } match {
 				case Some(e) => /*buf++=" } %s chooses %s".format(self.path.name, e._1); println(buf);*/ e._1
 				case None    => /*buf++=" %s WTF".format(self.path.name); println(buf);*/ ""
