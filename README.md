@@ -37,7 +37,7 @@ Launching the applet when using this jar:
 How to change the graph
 -----------------------
 
-Several example graphs are provided in the ```src/main/resources`` directory (and packaged in the jar when using the ``proguard`` command).
+Several example graphs are provided in the ``src/main/resources`` directory (and packaged in the jar when using the ``proguard`` command).
 
 You can load the examples by providing their name as the first argument on the command line prefixed by a slash:
 
@@ -113,13 +113,41 @@ You can find more details about this on the [stylesheet documentation page](http
 How does it works
 -----------------
 
+The model for the ant behavior is inspired by works from Jean-Louis Deneubourg and Marco Dorigo. The idea is that ants uses a constrained environment modeled as a graph. They start from a nest node and travel freely on the graph until they reach a food node. They consume this food and go back to the nest usually following the same path and dropping pheromones on it only when coming back.
+
+This model is inspired from nature and the works of Jean-Louis Deneubourg, but it departs from it on lots of points. First ants behavior is far more complex than that, they do not only use pheromones to choose their paths. Then the behavior depends on the species. 
+
+However this model has been the basis for a lot works on optimization, and other inspiring topics. Therefore we use it here to mimic a real experience on ants.
+
+Each ant is an independent agent that travels from the nest in order to forage food. When faced to a choice for continuing its path, it most of the time is influenced by the choices of its predecessors. This is done by the use of a kind of message dropped in the environment: pheromones. This kind of communication without contact is called stygmergy.
+
+Naturally the more ants used a path before, the more there is pheromone and therefore the more an ant will be influenced to follow this path. This positive feedback loop allows to build paths toward food.
+
+However pheromone tend to evaporate with time and must be regularly dropped on the path. If no more food is available at the end of the path, ants will not lay down pheromones and the path will disappear with time. This negative feedback mechanism allows ant to forget old non interesting paths.
+
+Here we model ants that lay down pheromone only on their back path to return to the nest. In nature, ants do not work like this. 
+
+In our model, ants will choose the next path to follow according to the following formula:
+
+    w = p^alpha * (1-d)^beta
+
+W is the weight of an edge, p is the pheromone on this edge, d is the length of this edge. Alpha and beta are parameters allowing to balance the relative importance of pheromones versus edge lengths.
+
+When an ant encounters an intersection it considers each edge and determine a weight for these edges. Then using a biased fortune wheel, it chooses the next edge according to the weights. Note that this is a random process, biased by the edge weights, which means that an edge with a short length and a lot of pheromones are more chances to be chosen. However an ant can still take the "bad" edge. But this characteristic (which makes the algorithm non deterministic) is also a strength: this is what makes the ants able to find new better paths if the one they use actually is no more usable.
+
+You can see that the ant is not only influenced by the pheromone present on the edge, it also follow a kind of greedy algorithm by preferring short edges than long ones. This is a not a good strategy to find shortest paths alone, but coupled with pheromones it improves things (a future version of the applet will let you choose several ants implementations with one that does not consider lengths).
+
+How is it implemented
+---------------------
+
 We use the [Akka](http://akka.io/) actor framework. The main idea is that there is an environment for the ants represented by a graph and managed by an actor.
 
 Then each ant is also an actor that travels on the graph. The ants actor only role is to implement behavior, they take actions like : I arrived on a new intersection, what edge do I choose to cross ? Or I am at the food, what to do ?
 
-The environment actor takes care of sending ants events like you are at an intersection, or you are on the food, and the ants answer with their choices.
+The environment actor takes care of sending ants events like you are at an intersection, or you are on the food, and the ants answer with their choices. It also manages the representation of the ants and the GUI, and it is the environment that moves the little dots representing the ants, allowing it to know when an ant reached an intersection or the food. This is also the environment that implement the pheromone evaporation.
 
-The model for the ant behavior is inspired by works from Jean-Louis Deneubourg and Marco Dorigo... TODO
+TODO talks of the various parts of the code.
 
-TODO give details, explain the model, the actor implementation and give diagrams.
+TODO talk of the messages exchanged by actors.
 
+Implementation note: the actor model is implicitly mutli-threaded, but rest assured that there is not one thread per actor. Instead, Akka uses a thread pool. Most of the time the thread pool is as large as your number of cores. This model gracefully scales according to your resources. This implies that your environment graph actor, the GUI and the ants will be allowed to run in distinct threads if possible, but two ants can run on the same thread for example. Future agent-based simulation platforms will probably investigate actors.
