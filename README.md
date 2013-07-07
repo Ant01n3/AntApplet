@@ -96,13 +96,19 @@ The command ``cg`` (change graph) will add the attribute ``antCount`` with a num
 
 Finally you can change the appearance of the graph using a style sheet:
 
-   cg "ui.antialias"
-   cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: grey; } node.food { size: 15px; fill-color: green; } edge { arrow-shape: none; size: 5px; fill-mode: dyn-plain; fill-color: grey, green, orange, red; } sprite { fill-color: red; } sprite.back { fill-color: green; }"
+    cg "ui.antialias"
+    cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: grey; } node.food { size: 15px; fill-color: green; } edge { arrow-shape: none; size: 5px; fill-mode: dyn-plain; fill-color: grey, green, orange, red; } sprite { fill-color: red; } sprite.back { fill-color: green; }"
 
 You can find more details about this on the [stylesheet documentation page](http://graphstream-project.org/doc/Tutorials/GraphStream-CSS-Reference_1.0/).
 
 How does it works
 -----------------
 
-TODO
+We use the [Akka](http://akka.io/) actor framework. The main idea is that there is an environment for the ants represented by a graph and managed by an actor.
+
+Then each ant is also an actor that travels on the graph. The ants actor only role is to implement behavior, they take actions like : I arrived on a new intersection, what edge do I choose to cross ? Or I am at the food, what to do ?
+
+The environment actor takes care of sending ants events like you are at an intersection, or you are on the food, and the ants answer with their choices.
+
+TODO give details and diagrams.
 
