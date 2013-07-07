@@ -122,7 +122,7 @@ object GraphActor {
 	case class AntCrosses(antId:String, edgeId:String, pheromon:Double=0.0)
 
 	/** The ant `antId` starts exploring from the nest. */
-	case class AntGoExploring(antId:String)
+	case class AntGoesExploring(antId:String)
 
 	/** The ant `antId` goes back to the nest. */
 	case class AntGoesBack(antId:String)
@@ -256,7 +256,7 @@ class GraphActor() extends Actor {
 
 	/** Make the ant representation move, detect when ants reached intersections,
 	  * the nest or the food and send messages to their actor to notify these events. */
-	protected def runSprites() {
+	protected def moveSprites() {
 		sprites.iterator.foreach { sprite =>
 			val antSprite = sprite.asInstanceOf[AntSprite]
 			if(antSprite.run) {
@@ -286,9 +286,9 @@ class GraphActor() extends Actor {
 			fromViewer.pump
 			hatchAnts
 			evaporate
-			runSprites
+			moveSprites
 		}
-		case AntGoExploring(antId) => {
+		case AntGoesExploring(antId) => {
 			val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
 			antSprite.goingBack = false
 			antSprite.removeAttribute("ui.class")
@@ -328,7 +328,7 @@ object Ant {
 	final val Evaporation = 0.999
 
 	/** Quantity of pheromone ants drop on edges. */
-	final val phDrop = 0.1
+	final val PhDrop = 0.1
 
 	/** Relative importance of pheromones when ants choose a path. */
 	final val Alpha = 2.0
@@ -367,6 +367,7 @@ class Ant extends Actor {
 	/** Random generator. */
 	var random = scala.util.Random
 
+	/** Behavior. */
 	def receive() = {
 		case AtIntersection(edges) => {
 			var edge:String = null
@@ -374,7 +375,7 @@ class Ant extends Actor {
 
 			if(goingBack) {
 				edge = memory.pop
-				drop = phDrop
+				drop = PhDrop
 			} else {
 				edge = chooseNextEdge(edges)
 				memory.push(edge)
@@ -388,39 +389,45 @@ class Ant extends Actor {
 		}
 		case AtNest => {
 			goingBack = false
-			sender ! GraphActor.AntGoExploring(self.path.name)
+			sender ! GraphActor.AntGoesExploring(self.path.name)
 		}
 		case _ => {
 			println("Ant: WTF ?!")
 		}
 	}
 
+	/** Choose the next edge to cross purely at random, each edge has
+	  * uniform probability to be chosen. */
 	def chooseNextEdgeRandom(edges:Array[(String,Double,Double)]):String = { edges(random.nextInt(edges.length))._1 }
 	
+	/** Choose the next edge to cross according to pheromones and lengths of the edges.
+	  * The weight is compute from relative pheromone and length importance. The paramter
+	  * [[Ant.Alpha]] and [[Ant.Beta]] allow to change these relative importance.
+	  * The compute array of weights is then used to find the next edge using a biased
+	  * fortune wheel. */
 	def chooseNextEdge(edges:Array[(String,Double,Double)]):String = {
-//val buf = new StringBuilder()
-//buf ++= "%s choose next { ".format(self.path.name)
 		var sum = 0.0
 		var rnd = random.nextDouble
 
+		// Compute the weights of each edge following Dorigo formula.
+
 		var weights = edges.map { edge =>
 			val weight = pow(edge._2, Alpha) * pow(1/edge._3, Beta)
-//			buf ++= "%s:%.2f ".format(edge._1, weight)
 			sum += weight
 			(edge._1, weight)
 		}
 
 		if(sum <= 0) {
-//buf++="} -> random"
-//println(buf)
 			chooseNextEdgeRandom(edges)
 		} else {
-//buf++="-> sum=%.2f rnd=%.2f (sum=%.2f) (%d) {".format(sum, rnd, sum*rnd, edges.length)
+			// Biased fortune wheel decision.
+
 			sum *= rnd
 			var tot = 0.0
-			weights.find { edge => tot += edge._2; /*buf++=" %.2f".format(tot);*/ tot >= sum } match {
-				case Some(e) => /*buf++=" } %s chooses %s".format(self.path.name, e._1); println(buf);*/ e._1
-				case None    => /*buf++=" %s WTF".format(self.path.name); println(buf);*/ ""
+
+			weights.find { edge => tot += edge._2; tot >= sum } match {
+				case Some(e) => e._1
+				case None    => ""
 			}
 		}
 	}
