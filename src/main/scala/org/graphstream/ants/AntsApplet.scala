@@ -27,7 +27,7 @@ object AntsApplet extends App {
 	val graph = actorSystem.actorOf(Props[GraphActor], name="graph")
 
 	args.length match {
-		case 0 => graph ! GraphActor.Start("/TwoBridges.dgs", 10)
+		case 0 => graph ! GraphActor.Start("/FourBridges.dgs", 10)
 		case 1 => graph ! GraphActor.Start(args(0), 10)
 		case _ => graph ! GraphActor.Start(args(0), args(1).toInt)
 	}
@@ -188,7 +188,12 @@ class GraphActor() extends Actor {
 
 		src.removeSink(graph)			
 
-		nest = graph.getNode("Nest")
+		nest = graph.getEachNode.find { node:Node => node.hasAttribute("nest") }.getOrElse {
+			throw new RuntimeException("You must provide a node with attribute 'nest' in the graph")
+		}
+
+		if(graph.hasNumber("antCount"))
+			antCount = graph.getNumber("antCount").toInt
 
 		graph.getEachEdge.foreach { edge:Edge => edge.addAttribute(Ph, (0.0).asInstanceOf[AnyRef]) }
 	}

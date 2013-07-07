@@ -1,30 +1,18 @@
 DGS004
 "" 0 0
 
-an Nest nest ui.class="nest" ui.label="Nest" x=0 y=0
-an Food food ui.class="food" ui.label="Food" x=0 y=-7
+an Nest nest ui.class="nest" ui.label="Nest" x=0 y=1
+an Food food ui.class="food" ui.label="Food" x=0 y=-1
 
-an A x=0 y=-1
-an B x=-1 y=-2
-an C x=3 y=-2
-an D x=0 y=-3
-an E x=0 y=-4
-an F x=-3 y=-5
-an G x=1 y=-5
-an H x=0 y=-6
+an A x=-1 y=0
+an B x=1 y=0
 
 ae NestA Nest > A
-ae AB A > B
-ae AC A > C
-ae BD B > D
-ae CD C > D
-ae DE D > E
-ae EF E > F
-ae EG E > G
-ae FH F > H
-ae GH G > H
-ae HFood H > Food
+ae NestB Nest > B
+ae AFood A > Food
+ae BFood B > Food
 
-cg "ui.title" "Ants !"
+cg antCount=6
+
 cg "ui.antialias"
 cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: grey; } node.food { size: 15px; fill-color: green; } edge { arrow-shape: none; size: 5px; fill-mode: dyn-plain; fill-color: grey, green, orange, red; } sprite { fill-color: red; } sprite.back { fill-color: green; }"
