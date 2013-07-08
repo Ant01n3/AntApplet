@@ -59,12 +59,11 @@ The graphs are prepared in the [DGS](http://graphstream-project.org/doc/Advanced
 Such a file must always start by a header:
 
     DGS004
-    "" 0 0
 
 Then you must create nodes and edges and position them. Edges must be oriented, leaving the nest. This avoids ants to make loops and allow them to go back to the nest. This is a trick, but in nature ants use other ways to find their paths than only pheromones.
 
 Lets take a simple diamond shaped graph example with one nest, one food source and two paths to the food. First we add two nodes for
-the nest and the food.
+the nest and the food. Each node or edge creation command must be on its own line (blank lines are allowed and ``#`` delimit comments that run until the end of the line).
 
     an Nest nest ui.class="nest" ui.label="Nest" x=0 y=1
     an Food food ui.class="food" ui.label="Food" x=0 y=-1
