@@ -437,7 +437,7 @@ class Ant extends Actor {
 		// Compute the weights of each edge following Dorigo formula.
 
 		var weights = edges.map { edge =>
-			val weight = pow(edge._2, alpha) * pow(1/edge._3, beta)
+			val weight = pow(edge._2, alpha) * (if(beta>0) pow(1/edge._3, beta) else 1.0)
 			sum += weight
 			(edge, weight)
 		}

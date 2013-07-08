@@ -96,8 +96,11 @@ You can change the number of ants (by default 10) using the ``antCount`` attribu
 
 The command ``cg`` (change graph) will add the attribute ``antCount`` with a number value. The other settings that can be changed are:
 
-    cg alpha=2.0         # The relative pheromone importance.
-    cg beta=1.5          # The relative edge length importance.
+    cg phDrop=1          # Base quantity of pheromone dropped on edges when going back to nest, see gamma.
+    cg alpha=1.5         # The relative pheromone importance.
+    cg beta=1.0          # The relative edge length importance.
+    cg gamma=3.0         # phDrop / pow(pathLengh,gamma), if 0, use only constant phDrop.
+    cg minPh=0.1         # Minimum pheromone quantity on edges
     cg evaporation=0.995 # The edge pheromone 'conservation' at each step.
 
 The values given above are the defaults. The evaporation rate is naturally tied to the number of ants.
@@ -124,17 +127,26 @@ Naturally the more ants used a path before, the more there is pheromone and ther
 
 However pheromone tend to evaporate with time and must be regularly dropped on the path. If no more food is available at the end of the path, ants will not lay down pheromones and the path will disappear with time. This negative feedback mechanism allows ant to forget old non interesting paths.
 
-Here we model ants that lay down pheromone only on their back path to return to the nest. In nature, ants do not work like this. 
+Here we model ants that lay down pheromone only on their back path to return to the nest. In nature, ants do not work like this (a future version may allow to choose when to drop pheromones, and eventually to choose to go back by a different path). 
 
-In our model, ants will choose the next path to follow according to the following formula:
+In our model, ants will choose the next edge to cross according to the following formula:
 
     w = p^alpha * (1-d)^beta
 
-W is the weight of an edge, p is the pheromone on this edge, d is the length of this edge. Alpha and beta are parameters allowing to balance the relative importance of pheromones versus edge lengths.
+Where ``w`` is the weight of an edge, ``p`` is the pheromone on this edge, ``d`` is the length of this edge. Parameters ``alpha`` and ``beta`` allow to balance the relative importance of pheromones versus edge lengths. If ``beta`` is zero, the formula becomes:
 
-When an ant encounters an intersection it considers each edge and determine a weight for these edges. Then using a biased fortune wheel, it chooses the next edge according to the weights. Note that this is a random process, biased by the edge weights, which means that an edge with a short length and a lot of pheromones are more chances to be chosen. However an ant can still take the "bad" edge. But this characteristic (which makes the algorithm non deterministic) is also a strength: this is what makes the ants able to find new better paths if the one they use actually is no more usable.
+    w = p^alpha
 
-You can see that the ant is not only influenced by the pheromone present on the edge, it also follow a kind of greedy algorithm by preferring short edges than long ones. This is a not a good strategy to find shortest paths alone, but coupled with pheromones it improves things (a future version of the applet will let you choose several ants implementations with one that does not consider lengths).
+When an ant encounters an intersection it considers each edge and determine a weight for these edges. Then using a biased fortune wheel, it chooses the next edge according to the weights. Note that this is a random process, biased by the edge weights, which means that an edge with a short length and a lot of pheromones has more chances to be chosen. However an ant can still take the "bad" edge. But this characteristic (which makes the algorithm non deterministic) is also a strength: this is what makes the ants able to find new better paths if the one they use actually is no more usable.
+
+You can see that the ant is not only influenced by the pheromone present on the edge, it also follow a kind of greedy algorithm by preferring short edges than long ones if ``beta`` is not zero. This is a not a good strategy to find shortest paths alone, but coupled with pheromones it may improves things. You can however completely remove this behavior by setting ``beta`` at zero.
+
+Ants drop pheromones on their path only when going back. The quantity of pheromone dropped on each edge is given by parameter ``phDrop`` and modified by parameter ``gamma``. If ``gamma`` is zero, 
+the quantity dropped is the constant ``phDrop`` else we use the formula:
+
+    drop = phDrop / l^gamma
+
+Where ``l`` is the length of the path of the ant. Here again you can choose to have a constant, or to use the path length. This may change drastically the behavior of the ants.
 
 The implementation
 ------------------
