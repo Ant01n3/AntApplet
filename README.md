@@ -109,8 +109,8 @@ Finally you can change the appearance of the graph using a style sheet:
 
 You can find more details about this on the [stylesheet documentation page](http://graphstream-project.org/doc/Tutorials/GraphStream-CSS-Reference_1.0/).
 
-How does it works
------------------
+The model
+---------
 
 The model for the ant behavior is inspired by works from Jean-Louis Deneubourg and Marco Dorigo. The idea is that ants uses a constrained environment modeled as a graph. They start from a nest node and travel freely on the graph until they reach a food node. They consume this food and go back to the nest usually following the same path and dropping pheromones on it only when coming back.
 
@@ -136,8 +136,8 @@ When an ant encounters an intersection it considers each edge and determine a we
 
 You can see that the ant is not only influenced by the pheromone present on the edge, it also follow a kind of greedy algorithm by preferring short edges than long ones. This is a not a good strategy to find shortest paths alone, but coupled with pheromones it improves things (a future version of the applet will let you choose several ants implementations with one that does not consider lengths).
 
-How is it implemented
----------------------
+The implementation
+------------------
 
 We use the [Akka](http://akka.io/) actor framework. The main idea is that there is an environment for the ants represented by a graph and managed by an actor.
 
