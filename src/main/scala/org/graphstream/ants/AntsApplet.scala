@@ -323,6 +323,7 @@ class GraphActor() extends Actor {
 // -- Ant Actor ---------------------------------------------------------------------------------------
 
 
+/** Messages an ant can receive and some global behavior values. */
 object Ant {
 	/** Maximum pheromon level on edges. */
 	var maxPh = 3.0
@@ -351,6 +352,7 @@ object Ant {
 }
 
 
+/** Represents an ant and its behavior. */
 class Ant extends Actor {
 	import Ant._
 
