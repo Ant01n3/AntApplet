@@ -168,6 +168,7 @@ TODO talks of the various parts of the code.
 
 Here is the behavior of an Ant:
 
+```scala
     def receive() = {
         case AtIntersection(edges) => {
             var edge:String = null
@@ -201,9 +202,11 @@ Here is the behavior of an Ant:
             sender ! GraphActor.AntGoesExploring(self.path.name)
         }
     }
+```
 
 Here is the behavior of the graph actor:
 
+```scala
     def receive() = {
         case Start(resource, antCount) => {
             start(resource, antCount)
@@ -237,6 +240,7 @@ Here is the behavior of the graph actor:
                 dropPheromone(drop, sprite.getAttachment.asInstanceOf[Edge])
         }
     }
+```
 
 TODO talk of the messages exchanged by actors.
 
