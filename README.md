@@ -121,7 +121,7 @@ This model is inspired from nature and the works of Jean-Louis Deneubourg, but i
 
 However this model has been the basis for a lot works on optimization, and other inspiring topics. Therefore we use it here to mimic a real experience on ants.
 
-Each ant is an independent agent that travels from the nest in order to forage food. When faced to a choice for continuing its path, it most of the time is influenced by the choices of its predecessors. This is done by the use of a kind of message dropped in the environment: pheromones. This kind of communication without contact is called stygmergy.
+Each ant is an independent agent that travels from the nest in order to forage food. When faced to a choice for continuing its path, it most of the time is influenced by the choices of its predecessors. This is done by the use of a kind of message dropped in the environment: pheromones. This kind of communication without contact is called [stigmergy](http://en.wikipedia.org/wiki/Stigmergy).
 
 Naturally the more ants used a path before, the more there is pheromone and therefore the more an ant will be influenced to follow this path. This positive feedback loop allows to build paths toward food.
 
