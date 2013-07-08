@@ -148,6 +148,13 @@ the quantity dropped is the constant ``phDrop`` else we use the formula:
 
 Where ``l`` is the length of the path of the ant. Here again you can choose to have a constant, or to use the path length. This may change drastically the behavior of the ants.
 
+Be careful that ``phDrop`` depends on several things:
+- the size of the network,
+- the quantity of ants,
+- the gamma parameter.
+
+Therefore the two most important parameters that you must change for each network is ``antCount`` and ``phDrop``.
+
 The implementation
 ------------------
 
