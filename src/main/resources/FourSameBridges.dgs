@@ -26,6 +26,7 @@ ae GH G > H
 ae HFood H > Food
 
 cg antCount=10
+cg phDrop=80
 
 cg "ui.title" "Ants !"
 cg "ui.antialias"

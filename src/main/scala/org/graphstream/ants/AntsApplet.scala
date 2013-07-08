@@ -197,8 +197,10 @@ class GraphActor() extends Actor {
 		if(graph.hasNumber("alpha"))       Ant.alpha       = graph.getNumber("alpha")
 		if(graph.hasNumber("beta"))        Ant.beta        = graph.getNumber("beta")
 		if(graph.hasNumber("phDrop"))      Ant.phDrop      = graph.getNumber("phDrop")
+		if(graph.hasNumber("minPh"))       Ant.minPh       = graph.getNumber("minPh")
+		if(graph.hasNumber("maxPh"))       Ant.maxPh       = graph.getNumber("maxPh")
 
-		graph.getEachEdge.foreach { edge:Edge => edge.addAttribute(Ph, (0.0).asInstanceOf[AnyRef]) }
+		graph.getEachEdge.foreach { edge:Edge => edge.addAttribute(Ph, (Ant.minPh).asInstanceOf[AnyRef]) }
 	}
 
 	/** Utility method to compute all the possible edges to explore from a given node.
@@ -253,6 +255,7 @@ class GraphActor() extends Actor {
 		graph.getEachEdge.foreach { edge:Edge =>
 			var ph = getPh(edge)
 			ph *= Ant.evaporation
+			if(ph < Ant.minPh) ph = Ant.minPh
 			updatePh(ph, edge)
 		}
 	}
@@ -273,7 +276,11 @@ class GraphActor() extends Actor {
 					if(antSprite.endPoint.hasAttribute("food")) {
 						antSprite.controller ! Ant.AtFood
 					} else {
-						antSprite.controller ! Ant.AtIntersection(possibleEdges(antSprite.endPoint))
+						val edges = possibleEdges(antSprite.endPoint)
+
+						if(edges.length > 0)
+						     antSprite.controller ! Ant.AtIntersection(edges)
+						else antSprite.controller ! Ant.Lost
 					}
 				}
 			}
@@ -326,19 +333,24 @@ class GraphActor() extends Actor {
 /** Messages an ant can receive and some global behavior values. */
 object Ant {
 	/** Maximum pheromon level on edges. */
-	var maxPh = 3.0
+	var maxPh = 1.0
+
+	/** Minimum pheromon level on edges. */
+	var minPh =  0.1
 
 	/** Pheromone conservation factor (not really evaporation, but as usual...). */
-	var evaporation = 0.999
+	var evaporation = 0.997
 
 	/** Quantity of pheromone ants drop on edges. */
-	var phDrop = 0.1
+	var phDrop = 1.0
 
 	/** Relative importance of pheromones when ants choose a path. */
 	var alpha = 2.0
 
 	/** Relative importance of edge length when ants choose a path (greedy algorithm). */
 	var beta = 1.5
+
+	var gamma = 3.0
 
 	/** The ant reached an intersection. The data is a set of triplets (edge
 	  * identifier, pheromone level, length). */
@@ -349,6 +361,9 @@ object Ant {
 
 	/** The ant reached the nest. */
 	case class AtNest()
+
+	/** The ant reached a dead-end. */
+	case class Lost()
 }
 
 
@@ -356,18 +371,14 @@ object Ant {
 class Ant extends Actor {
 	import Ant._
 
-	/** Edge currently traveled. */
-	var edge:String = null
-
-	/** Position on the edge between 0 and 1. */
-	var position = 0.0
-
 	/** Actual path of the ant from the nest to the food. */
 	var memory = Stack[String]()
 
 	/** If true instead of choosing the next edge, we unstack
 	  * the memory to follow the path used at start. */
 	var goingBack = false
+
+	var pathSize = 0.0
 
 	/** Random generator. */
 	var random = scala.util.Random
@@ -380,9 +391,11 @@ class Ant extends Actor {
 
 			if(goingBack) {
 				edge = memory.pop
-				drop = phDrop
+				drop = if(gamma <=0) phDrop else phDrop / pow(pathSize, gamma)
 			} else {
-				edge = chooseNextEdge(edges)
+				val chosen = chooseNextEdge(edges)
+				edge = chosen._1
+				pathSize += chosen._3
 				memory.push(edge)
 			}
 			
@@ -393,6 +406,13 @@ class Ant extends Actor {
 			sender ! GraphActor.AntGoesBack(self.path.name)
 		}
 		case AtNest => {
+			pathSize = 0.0
+			goingBack = false
+			sender ! GraphActor.AntGoesExploring(self.path.name)
+		}
+		case Lost => {
+			pathSize = 0.0
+			memory.clear
 			goingBack = false
 			sender ! GraphActor.AntGoesExploring(self.path.name)
 		}
@@ -403,14 +423,14 @@ class Ant extends Actor {
 
 	/** Choose the next edge to cross purely at random, each edge has
 	  * uniform probability to be chosen. */
-	def chooseNextEdgeRandom(edges:Array[(String,Double,Double)]):String = { edges(random.nextInt(edges.length))._1 }
+	def chooseNextEdgeRandom(edges:Array[(String,Double,Double)]):(String,Double,Double) = { edges(random.nextInt(edges.length)) }
 	
 	/** Choose the next edge to cross according to pheromones and lengths of the edges.
 	  * The weight is compute from relative pheromone and length importance. The paramter
 	  * [[Ant.Alpha]] and [[Ant.Beta]] allow to change these relative importance.
 	  * The compute array of weights is then used to find the next edge using a biased
 	  * fortune wheel. */
-	def chooseNextEdge(edges:Array[(String,Double,Double)]):String = {
+	def chooseNextEdge(edges:Array[(String,Double,Double)]):(String,Double,Double) = {
 		var sum = 0.0
 		var rnd = random.nextDouble
 
@@ -419,7 +439,7 @@ class Ant extends Actor {
 		var weights = edges.map { edge =>
 			val weight = pow(edge._2, alpha) * pow(1/edge._3, beta)
 			sum += weight
-			(edge._1, weight)
+			(edge, weight)
 		}
 
 		if(sum <= 0) {
@@ -432,7 +452,7 @@ class Ant extends Actor {
 
 			weights.find { edge => tot += edge._2; tot >= sum } match {
 				case Some(e) => e._1
-				case None    => ""
+				case None    => ("",0.0,0.0)
 			}
 		}
 	}

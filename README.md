@@ -78,7 +78,7 @@ Finally the attributes ``x`` and ``y`` allow to position the nodes.
 
 Now lets add the other nodes:
 
-    an A x=-1 y=0
+    an A x=-3 y=0
     an B x=1 y=0
 
 We now can add edges:
