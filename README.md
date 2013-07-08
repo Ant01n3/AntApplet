@@ -133,11 +133,11 @@ In our model, ants will choose the next edge to cross according to the following
 
     w = p^alpha * (1-d)^beta
 
-Where ``w`` is the weight of an edge, ``p`` is the pheromone on this edge, ``d`` is the length of this edge. Parameters ``alpha`` and ``beta`` allow to balance the relative importance of pheromones versus edge lengths. If ``beta`` is zero, the formula becomes:
+Where ``w`` is the weight of an edge, ``p`` is the pheromone on this edge, ``d`` is the length of this edge. Parameters ``alpha`` and ``beta`` allow to balance the relative importance of pheromones versus edge lengths. If ``beta`` is zero, the implementation uses the formula:
 
     w = p^alpha
 
-When an ant encounters an intersection it considers each edge and determine a weight for these edges. Then using a biased fortune wheel, it chooses the next edge according to the weights. Note that this is a random process, biased by the edge weights, which means that an edge with a short length and a lot of pheromones has more chances to be chosen. However an ant can still take the "bad" edge. But this characteristic (which makes the algorithm non deterministic) is also a strength: this is what makes the ants able to find new better paths if the one they use actually is no more usable.
+When an ant encounters an intersection it considers each edge and determine a weight for these edges. Then using a biased fortune wheel, it chooses the next edge according to the weights. Note that this is a random process, biased by the edge weights, which means that an edge with a short length and a lot of pheromones has more chances to be chosen. However an ant can still take the "bad" edge. But this characteristic (which makes the algorithm non deterministic) is also a strength: this is what makes the ants able to find new better paths if the one they use actually is no more usable. This is also why the algorithm as a ``minPh`` value so that edges can always have a minimum pheromone value to let ants try it.
 
 You can see that the ant is not only influenced by the pheromone present on the edge, it also follow a kind of greedy algorithm by preferring short edges than long ones if ``beta`` is not zero. This is a not a good strategy to find shortest paths alone, but coupled with pheromones it may improves things. You can however completely remove this behavior by setting ``beta`` at zero.
 
@@ -165,6 +165,78 @@ Then each ant is also an actor that travels on the graph. The ants actor only ro
 The environment actor takes care of sending ants events like you are at an intersection, or you are on the food, and the ants answer with their choices. It also manages the representation of the ants and the GUI, and it is the environment that moves the little dots representing the ants, allowing it to know when an ant reached an intersection or the food. This is also the environment that implement the pheromone evaporation.
 
 TODO talks of the various parts of the code.
+
+Here is the behavior of an Ant:
+
+    def receive() = {
+        case AtIntersection(edges) => {
+            var edge:String = null
+            var drop:Double = 0.0
+             
+            if(goingBack) {
+                edge = memory.pop
+                drop = if(gamma <=0) phDrop else phDrop / pow(pathSize, gamma)
+            } else {
+                val chosen = chooseNextEdge(edges)
+                edge = chosen._1
+                pathSize += chosen._3
+                memory.push(edge)
+            }
+            
+            sender ! GraphActor.AntCrosses(self.path.name, edge, drop)
+        }
+        case AtFood => {
+            goingBack = true
+            sender ! GraphActor.AntGoesBack(self.path.name)
+        }
+        case AtNest => {
+            pathSize = 0.0
+            goingBack = false
+            sender ! GraphActor.AntGoesExploring(self.path.name)
+        }
+        case Lost => {
+            pathSize = 0.0
+            memory.clear
+            goingBack = false
+            sender ! GraphActor.AntGoesExploring(self.path.name)
+        }
+    }
+
+Here is the behavior of the graph actor:
+
+    def receive() = {
+        case Start(resource, antCount) => {
+            start(resource, antCount)
+        }
+        case ReceiveTimeout => {
+            fromViewer.pump
+            hatchAnts
+            evaporate
+            moveSprites
+        }
+        case AntGoesExploring(antId) => {
+            val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+            antSprite.goingBack = false
+            antSprite.removeAttribute("ui.class")
+            antSprite.controller ! Ant.AtIntersection(possibleEdges(nest))
+        }
+        case AntGoesBack(antId) => {
+            val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+            antSprite.goingBack = true
+            antSprite.addAttribute("ui.class", "back")
+            antSprite.controller ! Ant.AtIntersection(null)
+        }
+        case AntCrosses(antId, edgeId, drop) => {
+            fromViewer.pump
+            val length = GraphPosLengthUtils.edgeLength(graph, edgeId)
+            val sprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+            
+            sprite.cross(edgeId, length)
+            
+            if(drop > 0)
+                dropPheromone(drop, sprite.getAttachment.asInstanceOf[Edge])
+        }
+    }
 
 TODO talk of the messages exchanged by actors.
 
