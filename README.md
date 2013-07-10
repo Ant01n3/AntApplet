@@ -139,7 +139,7 @@ Where ``w`` is the weight of an edge, ``p`` is the pheromone on this edge, ``d``
 
 When an ant encounters an intersection it considers each edge and determine a weight for these edges. Then using a biased fortune wheel, it chooses the next edge according to the weights. Note that this is a random process, biased by the edge weights, which means that an edge with a short length and a lot of pheromones has more chances to be chosen. However an ant can still take the "bad" edge. But this characteristic (which makes the algorithm non deterministic) is also a strength: this is what makes the ants able to find new better paths if the one they use actually is no more usable. This is also why the algorithm as a ``minPh`` value so that edges can always have a minimum pheromone value to let ants try it.
 
-You can see that the ant is not only influenced by the pheromone present on the edge, it also follow a kind of greedy algorithm by preferring short edges than long ones if ``beta`` is not zero. This is a not a good strategy to find shortest paths alone, but coupled with pheromones it may improves things. You can however completely remove this behavior by setting ``beta`` at zero.
+You can see that the ant is not only influenced by the pheromone present on the edge, it also follows a kind of greedy algorithm by preferring short edges than long ones if ``beta`` is not zero. This is a not a good strategy to find shortest paths alone, but coupled with pheromones it may improves things. You can however completely remove this behavior by setting ``beta`` at zero.
 
 Ants drop pheromones on their path only when going back. The quantity of pheromone dropped on each edge is given by parameter ``phDrop`` and modified by parameter ``gamma``. If ``gamma`` is zero, 
 the quantity dropped is the constant ``phDrop`` else we use the formula:
@@ -165,6 +165,7 @@ Then each ant is also an actor that travels on the graph. The ants actor only ro
 The environment actor takes care of sending ants events like you are at an intersection, or you are on the food, and the ants answer with their choices. It also manages the representation of the ants and the GUI, and it is the environment that moves the little dots representing the ants, allowing it to know when an ant reached an intersection or the food. This is also the environment that implement the pheromone evaporation.
 
 TODO talks of the various parts of the code.
+TODO talk of the messages exchanged by actors.
 
 Here is the behavior of an Ant:
 
@@ -201,6 +202,7 @@ Here is the behavior of an Ant:
             goingBack = false
             sender ! GraphActor.AntGoesExploring(self.path.name)
         }
+        ...
     }
 ```
 
@@ -239,9 +241,8 @@ Here is the behavior of the graph actor:
             if(drop > 0)
                 dropPheromone(drop, sprite.getAttachment.asInstanceOf[Edge])
         }
+        ...
     }
 ```
-
-TODO talk of the messages exchanged by actors.
 
 Implementation note: the actor model is implicitly mutli-threaded, but rest assured that there is not one thread per actor. Instead, Akka uses a thread pool. Most of the time the thread pool is as large as your number of cores. This model gracefully scales according to your resources. This implies that your environment graph actor, the GUI and the ants will be allowed to run in distinct threads if possible, but two ants can run on the same thread for example. Future agent-based simulation platforms will probably investigate actors.

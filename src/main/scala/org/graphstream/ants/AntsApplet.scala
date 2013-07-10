@@ -60,7 +60,7 @@ class AntSprite(id:String, manager:SpriteManager, initialPosition:Values) extend
 	var goingBack = false
 
 	/** The actor and the real ant behavior. */
-	var controller:ActorRef = null
+	var actor:ActorRef = null
 
 	/** Start walking along the edge, the direction and start point depends on the `goingBack` flag. */
 	def cross(edge:String, length:Double) {
@@ -97,6 +97,13 @@ class AntSprite(id:String, manager:SpriteManager, initialPosition:Values) extend
 		arrived
 	}
 
+	def goBack(on:Boolean) {
+		goingBack = on
+		if(on)
+		     setAttribute("ui.class", "back")
+		else removeAttribute("ui.class")
+	}
+
 	/** Utility method, end-point node of the current edge (depends on the direction of the ant). */
 	def endPoint():Node = {
 		if(goingBack)
@@ -116,7 +123,8 @@ object GraphActor {
 	  * The number of ants is also given and defaults to 10. */
 	case class Start(graphResource:String = "/TwoBridges.dgs", antCount:Int = 10)
 
-	/** The ant `antId` is now on edge `edgeId` at the start of it.
+	/** The ant `antId` is now on edge `edgeId` at the start of it. Doing so it will
+	  * deposit the given 'drop' quantity of pheromone on the edge.
 	  * Most often this message comes after the graph sent a [[Ant.AtIntersection]]
 	  * message. */
 	case class AntCrosses(antId:String, edgeId:String, pheromon:Double=0.0)
@@ -231,7 +239,7 @@ class GraphActor() extends Actor {
 	}
 
 	/** Create a new ant if the total count is not reached. */
-	protected def hatchAnts() {
+	protected def hatchAntsIfNeeded() {
 		if(sprites.getSpriteCount < antCount) {
 			hatchAnt
 		}
@@ -242,8 +250,8 @@ class GraphActor() extends Actor {
 		val id     = "ant%d".format(sprites.getSpriteCount)
 		val sprite = sprites.addSprite(id).asInstanceOf[AntSprite]
 
-		sprite.controller = context.actorOf(Props[Ant], name=id)
-		sprite.controller ! Ant.AtIntersection(possibleEdges(nest))
+		sprite.actor = context.actorOf(Props[Ant], name=id)
+		sprite.actor ! Ant.AtIntersection(possibleEdges(nest))
 	}
 
 	protected def nodePosition(node:Node, x:Int, y:Int) {
@@ -251,7 +259,7 @@ class GraphActor() extends Actor {
 	}
 
 	/** Apply evaporation on each edge. */
-	protected def evaporate() {
+	protected def evaporatePheromone() {
 		graph.getEachEdge.foreach { edge:Edge =>
 			var ph = getPh(edge)
 			ph *= Ant.evaporation
@@ -262,25 +270,25 @@ class GraphActor() extends Actor {
 
 	/** Make the ant representation move, detect when ants reached intersections,
 	  * the nest or the food and send messages to their actor to notify these events. */
-	protected def moveSprites() {
+	protected def moveAntsRepresentations() {
 		sprites.iterator.foreach { sprite =>
 			val antSprite = sprite.asInstanceOf[AntSprite]
 			if(antSprite.run) {
 				if(antSprite.goingBack) {
 					if(antSprite.endPoint.hasAttribute("nest")) {
-						antSprite.controller ! Ant.AtNest
+						antSprite.actor ! Ant.AtNest
 					} else {
-						antSprite.controller ! Ant.AtIntersection(null)
+						antSprite.actor ! Ant.AtIntersection(null)
 					}
 				} else {
 					if(antSprite.endPoint.hasAttribute("food")) {
-						antSprite.controller ! Ant.AtFood
+						antSprite.actor ! Ant.AtFood
 					} else {
 						val edges = possibleEdges(antSprite.endPoint)
 
 						if(edges.length > 0)
-						     antSprite.controller ! Ant.AtIntersection(edges)
-						else antSprite.controller ! Ant.Lost
+						     antSprite.actor ! Ant.AtIntersection(edges)
+						else antSprite.actor ! Ant.Lost
 					}
 				}
 			}
@@ -294,21 +302,19 @@ class GraphActor() extends Actor {
 		}
 		case ReceiveTimeout => {
 			fromViewer.pump
-			hatchAnts
-			evaporate
-			moveSprites
+			hatchAntsIfNeeded
+			evaporatePheromone
+			moveAntsRepresentations
 		}
 		case AntGoesExploring(antId) => {
 			val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
-			antSprite.goingBack = false
-			antSprite.removeAttribute("ui.class")
-			antSprite.controller ! Ant.AtIntersection(possibleEdges(nest))
+			antSprite.goBack(false)
+			antSprite.actor ! Ant.AtIntersection(possibleEdges(nest))
 		}
 		case AntGoesBack(antId) => {
 			val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
-			antSprite.goingBack = true
-			antSprite.addAttribute("ui.class", "back")
-			antSprite.controller ! Ant.AtIntersection(null)
+			antSprite.goBack(true)
+			antSprite.actor ! Ant.AtIntersection(null)
 		}
 		case AntCrosses(antId, edgeId, drop) => {
 			fromViewer.pump
