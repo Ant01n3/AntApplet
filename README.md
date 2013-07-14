@@ -3,7 +3,7 @@ Ant Applet
 
 A very simple program that tries to demonstrate how ants find the shortest path between a nest and one (or more) food sources.
 
-The program uses [Scala](http://www.scala-lang.org/) and the [actor model](http://en.wikipedia.org/wiki/Actor_model) to represent the ants. It uses [GraphStream](http://graphstream-project.org/) to represent an environment actor (a graph representing the possible paths for the ants). Then each ant is an actor that takes decision each time it encounters an intersection based on informations stored on the edges. Ants use a model inspired by the works of Jean-Louis Deneubourg and Marco Dorigo.
+The program uses [Scala](http://www.scala-lang.org/) and the [actor model](http://en.wikipedia.org/wiki/Actor_model) to represent the ants. It uses [GraphStream](http://graphstream-project.org/) to represent an environment actor (a graph representing the possible paths for the ants). Then each ant is an actor that takes orientation decisions each time it encounters an intersection based on informations stored on the edges. Ants use a model inspired by the works of Jean-Louis Deneubourg and Marco Dorigo.
 
 Installation and use
 --------------------
@@ -34,14 +34,20 @@ Launching the applet when using this jar:
 
     java -jar antsapplet_2.10-0.1.min.jar
 
+To create the API documentation:
+
+    doc 
+
+You can then find the documentation in ``target/scala-2.10/api``.
+
 How to change the graph
 -----------------------
 
-Several example graphs are provided in the ``src/main/resources`` directory (and packaged in the jar when using the ``proguard`` command).
+Several example environment graphs are provided in the ``src/main/resources`` directory (and packaged in the jar when using the ``proguard`` command).
 
 You can load the examples by providing their name as the first argument on the command line prefixed by a slash:
 
-    run "/TwoBridges.dgs"
+    run "/FourBridges.dgs"
 
 Or with the jar:
 
@@ -179,11 +185,11 @@ Here is the behavior of an Ant:
     }
 ```
 
-Here is the behavior of the graph actor:
+Here is the behavior of the environment:
 
 ```scala
     def receive() = {
     }
 ```
 
-Implementation note: the actor model is implicitly mutli-threaded, but rest assured that there is not one thread per actor. Instead, Akka uses a thread pool. Most of the time the thread pool is as large as your number of cores. This model gracefully scales according to your resources. This implies that your environment graph actor, the GUI and the ants will be allowed to run in distinct threads if possible, but two ants can run on the same thread for example. Future agent-based simulation platforms will probably investigate actors.
+Implementation note: the actor model is implicitly mutli-threaded, but rest assured that there is not one thread per actor. Instead, Akka uses a thread pool. Most of the time the thread pool is as large as your number of cores. This model gracefully scales according to your resources. This implies that your environment actor, the GUI and the ant actors will be allowed to run in distinct threads if possible, but two ants can run on the same thread for example. Future agent-based simulation platforms will probably investigate actors.

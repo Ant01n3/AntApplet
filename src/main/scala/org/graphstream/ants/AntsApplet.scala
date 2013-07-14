@@ -20,16 +20,16 @@ import scala.math._
 /** Launch the application. */
 object AntsApplet extends App {
 	
-	/** Actor system. */
+	/** Actor system. We do a quick and dirty configuration. */
 	protected val actorSystem = ActorSystem("Ants", ConfigFactory.parseMap(HashMap[String,AnyRef](("akka.scheduler.tick-duration" -> "10ms"))))
 	
 	/** Initial actor launching all others. */
-	protected val graph = actorSystem.actorOf(Props[GraphActor], name="graph")
+	protected val graph = actorSystem.actorOf(Props[Environment], name="graph")
 
 	args.length match {
-		case 0 ⇒ graph ! GraphActor.Start("/FourBridges.dgs", 10)
-		case 1 ⇒ graph ! GraphActor.Start(args(0), 10)
-		case _ ⇒ graph ! GraphActor.Start(args(0), args(1).toInt)
+		case 0 ⇒ graph ! Environment.Start("/FourBridges.dgs", 10)
+		case 1 ⇒ graph ! Environment.Start(args(0), 10)
+		case _ ⇒ graph ! Environment.Start(args(0), args(1).toInt)
 	}
 }
 
@@ -171,7 +171,7 @@ case class Pheromone(count:Int) {
   * directly on values stored on the graph). */
 class EdgePheromones(val id:String, val length:Double, val pheromones:Array[Double]) {
 	def this(edge:Edge) {
-		this(edge.getId, GraphPosLengthUtils.edgeLength(edge), edge.getAttribute(GraphActor.Ph).asInstanceOf[Pheromone].toArray)
+		this(edge.getId, GraphPosLengthUtils.edgeLength(edge), edge.getAttribute(Environment.Ph).asInstanceOf[Pheromone].toArray)
 	}
 
 	/** Pheromone value for the given `antType`. */
@@ -180,11 +180,11 @@ class EdgePheromones(val id:String, val length:Double, val pheromones:Array[Doub
 
 
 
-// -- Graph Actor ----------------------------------------------------------------------------
+// -- Environment ----------------------------------------------------------------------------
 
 
-/** Messages the graph actor can receive. */
-object GraphActor {
+/** Messages the environment can receive. */
+object Environment {
 	/** Start the graph environment actor and all ant sub-actors. The graph is
 	  * given as a resource. If null, the "/TwoBridges.dgs" resource is loaded.
 	  * The number of ants is also given and defaults to 10. */
@@ -208,11 +208,11 @@ object GraphActor {
 }
 
 
-/** Represents the environment of the ants. Handles global behaviors like evaporation.
-  * It also handle the GUI and the ants representation (but not the ant behavior that
-  * is implemented in ant actors). */
-class GraphActor() extends Actor {
-	import GraphActor._
+/** Represents the environment of the ants under the form of a graph. Handles global
+  * behaviors like evaporation. It also handle the GUI and the ants representation
+  * (but not the ant behavior that is implemented in ant actors). */
+class Environment() extends Actor {
+	import Environment._
 
 	/** Ant environment. */
 	protected var graph:SingleGraph = null
@@ -481,7 +481,7 @@ class Ant extends Actor {
 				memorize(chosen)
 			}
 			
-			sender ! GraphActor.AntCrosses(id, edge, antType, drop)
+			sender ! Environment.AntCrosses(id, edge, antType, drop)
 		}
 		case AntType(theAntType) ⇒ {
 			antType = theAntType
@@ -489,19 +489,19 @@ class Ant extends Actor {
 		case AtFood(nodeFoodType) ⇒ {
 			if(antType == nodeFoodType) {
 				goingBack = true
-				sender ! GraphActor.AntGoesBack(id)
+				sender ! Environment.AntGoesBack(id)
 			} else {
 				resetMemory
-				sender ! GraphActor.AntGoesExploring(id)
+				sender ! Environment.AntGoesExploring(id)
 			}
 		}
 		case AtNest ⇒ {
 			resetMemory
-			sender ! GraphActor.AntGoesExploring(id)
+			sender ! Environment.AntGoesExploring(id)
 		}
 		case Lost ⇒ {
 			resetMemory
-			sender ! GraphActor.AntGoesExploring(id)
+			sender ! Environment.AntGoesExploring(id)
 		}
 		case _ ⇒ {
 			println("Ant: WTF ?!")
