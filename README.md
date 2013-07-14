@@ -175,21 +175,105 @@ Then each ant is also an actor that travels on the graph. The ants actor only ro
 
 The environment actor takes care of sending ants events like you are at an intersection, or you are on the food, and the ants answer with their choices. It also manages the representation of the ants and the GUI, and it is the environment that moves the little dots representing the ants, allowing it to know when an ant reached an intersection or the food. This is also the environment that implement the pheromone evaporation.
 
-TODO talks of the various parts of the code.
-TODO talk of the messages exchanged by actors.
+The components of this applet:
 
-Here is the behavior of an Ant:
+* The ``Environment`` actor that manage the physical environment for the ants.
+* The ``Ant``s actors implementing the behavior of the ants.
+* The ``AntSprite``s objects that represent ant on screen, managed by the environment, moving at constant speed and allowing the environment to know when an ant really reached an intersection.
+* The ``Pheromone``s, objects stored on each edge and storing the pheromone value for each type of ant.
 
-```scala
-    def receive() = {
-    }
-```
+As often with actors, the best starting point to read the program is their respective ``receive`` method. These method implement the behavior of the actors.
+
+The environment has a special ``ReceiveTimeout`` behavior that is called automatically by the system every 10 milliseconds. This clock behavior allows to implement the moving of ant representations, the evaporation, etc.
+
+Then the environment will "talk" with the various ant actors by exchanging messages. First the environment will create an ant actor at each timeout if the required total number of ants is not reached. This allows to launch ants one by one. Just after creating an ant, the environment send it two messages. First a ``AntType`` that allows the ant to know its species (by default there is only one species). Then a ``AtIntersection`` message. These messages contain information (pheromone values, lengths, identifiers) on all the edges that leave a node. This first message always refer to the nest node.
+
+When an ant receives a ``AtIntersection`` message it can do two things. Either the ant is in "exploration" mode and it will have to choose which edge to follow according to the model explained above. Or it is in "returning" mode (it has found a food node) and it will follow the edges it used to come to the food. In these two cases, the ant will send a ``AntCrosses`` message to the environment telling which edge it follows (and informations like the quantity of pheromone to drop on it for example).
+
+The environment will maintain a "sprite" representing the ant that it will animate to know when it reached a node in the graph. When this happens, either the ant is in "exploration mode" or in "returning" mode. In the two cases, the environment will most of the time send a ``AtIntersection`` message to the ant. In the first mode the message contains informations on all the possible edges that the ant may cross next. In the second mode it will contain no data (since the ant always follow its path in reverse order to come back to the nest). However, instead of the ``AtIntersection`` message, the environment may also send ``AtFood`` to signal that the ant is not on an intersection but reached a food node or ``AtNest``. This also depends on the mode of the ant (exploring, returning). It can also send a ``Lost`` message is there is no possible intersection, when the ant reached a dead-end (remember that the graph is directed).
+
+We already know what the ant does when it receives a ``AtIntersection`` message. When it receives a ``AtFood`` message is switch from "exploration" mode to "returning" mode and send a ``AntGoesBack`` message to the environment. Then, each time it will receive a ``AtIntersection`` message it will ask to cross the edges of its path to food in reverse order until it receives a ``AtNest`` message, where it switch back from "returning" to "exploring" mode by sending a ``AntGoesExploring`` message to the environment.
+
+When the environment receives a ``AntGoesBack`` message, it sends back a ``AtIntersection`` message. We have seen that the ant will respond by a ``AntCross`` message with edges of its path toward the food in reverse order. When the environment receives a ``AntGoesExploring`` message, it send back ``AtIntersection`` message with the possible leaving edges of the nest node, just like for a new ant.
 
 Here is the behavior of the environment:
 
 ```scala
     def receive() = {
+        case Start(resource, antCount) ⇒ {
+            start(resource, antCount)
+        }
+        case ReceiveTimeout ⇒ {
+            fromViewer.pump
+            hatchAntsIfNeeded
+            evaporatePheromone
+            moveAntsRepresentations
+        }
+        case AntGoesExploring(antId) ⇒ {
+            val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+            antSprite.goBack(false)
+            antSprite.actor ! Ant.AtIntersection(possibleEdges(nest))
+        }
+        case AntGoesBack(antId) ⇒ {
+            val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+            antSprite.goBack(true)
+            antSprite.actor ! Ant.AtIntersection(null)
+        }
+        case AntCrosses(antId, edgeId, antType, drop) ⇒ {
+            fromViewer.pump
+            val length = GraphPosLengthUtils.edgeLength(graph, edgeId)
+            val sprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+
+            sprite.cross(edgeId, length)
+
+            if(drop > 0)
+                dropPh(antType, drop, sprite.getAttachment.asInstanceOf[Edge])
+        }
     }
 ```
+
+Here is the behavior of an Ant:
+
+```scala
+    def receive() = {
+        case AtIntersection(edges) ⇒ {
+            var edge:String = null
+            var drop:Double = 0.0
+
+            if(goingBack) {
+                edge = memory.pop
+                drop = if(gamma <=0) phDrop else phDrop / pow(pathSize, gamma)
+            } else {
+                val chosen = chooseNextEdge(edges)
+                edge       = chosen.id
+                memorize(chosen)
+            }
+            
+            sender ! Environment.AntCrosses(id, edge, antType, drop)
+        }
+        case AntType(theAntType) ⇒ {
+            antType = theAntType
+        }
+        case AtFood(nodeFoodType) ⇒ {
+            if(antType == nodeFoodType) {
+                goingBack = true
+                sender ! Environment.AntGoesBack(id)
+            } else {
+                resetMemory
+                sender ! Environment.AntGoesExploring(id)
+            }
+        }
+        case AtNest ⇒ {
+            resetMemory
+            sender ! Environment.AntGoesExploring(id)
+        }
+        case Lost ⇒ {
+            resetMemory
+            sender ! Environment.AntGoesExploring(id)
+        }
+    }
+```
+
+All the protocol between the environment and the ants is explained above. All the model however is expressed in the way the ants choose the next edge to cross when exploring, and on the quantity of pheromone they drop on edges when returning. You can have a look at the ``Ant.chooseNextEdge()`` method and at the ``AtIntersection`` message handling in ``Ant.receive()`` to see how the model is implemented.
 
 Implementation note: the actor model is implicitly mutli-threaded, but rest assured that there is not one thread per actor. Instead, Akka uses a thread pool. Most of the time the thread pool is as large as your number of cores. This model gracefully scales according to your resources. This implies that your environment actor, the GUI and the ant actors will be allowed to run in distinct threads if possible, but two ants can run on the same thread for example. Future agent-based simulation platforms will probably investigate actors.
