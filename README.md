@@ -5,6 +5,17 @@ A very simple program that tries to demonstrate how ants find the shortest path 
 
 The program uses [Scala](http://www.scala-lang.org/) and the [actor model](http://en.wikipedia.org/wiki/Actor_model) to represent the ants. It uses [GraphStream](http://graphstream-project.org/) to represent an environment actor (a graph representing the possible paths for the ants). Then each ant is an actor that takes orientation decisions each time it encounters an intersection based on informations stored on the edges. Ants use a model inspired by the works of Jean-Louis Deneubourg and Marco Dorigo.
 
+This readme contains the following information:
+
+* auto-gen TOC:
+{:toc}
+
+* Installation and use
+* Changing the ant environment graph
+* Creating your how ant environment graphs
+* The ant model used
+* The implementation
+
 Installation and use
 --------------------
 
@@ -276,6 +287,6 @@ Here is the behavior of an Ant:
 
 All the protocol between the environment and the ants is explained above. All the model however is expressed in the way the ants choose the next edge to cross when exploring, and on the quantity of pheromone they drop on edges when returning. You can have a look at the ``Ant.chooseNextEdge()`` method and at the ``AtIntersection`` message handling in ``Ant.receive()`` to see how the model is implemented.
 
-Implementation node 1: this implementation can be seen as an academic treatment of the problem. We do not seek to be the fastest way to do it or the more complete with lots of parameters. Instead we try to be as simple as possible, and allowing experimentation. This is also a way to experiment on the actor model, which is remarkably suited for such "simulation" problems.
+Implementation note 1: this implementation can be seen as an academic treatment of the problem. We do not seek to be the fastest way to do it or the more complete with lots of parameters. Instead we try to be as simple as possible, and allowing experimentation. This is also a way to experiment on the actor model, which is remarkably suited for such "simulation" problems.
 
 Implementation note 2: the actor model is implicitly mutli-threaded, but rest assured that there is not one thread per actor. Instead, Akka uses a thread pool. Most of the time the thread pool is as large as your number of cores. This model gracefully scales according to your resources. This implies that your environment actor, the GUI and the ant actors will be allowed to run in distinct threads if possible, but two ants can run on the same thread for example. Future agent-based simulation platforms will probably investigate actors.
