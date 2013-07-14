@@ -27,9 +27,9 @@ object AntsApplet extends App {
 	protected val graph = actorSystem.actorOf(Props[GraphActor], name="graph")
 
 	args.length match {
-		case 0 => graph ! GraphActor.Start("/FourBridges.dgs", 10)
-		case 1 => graph ! GraphActor.Start(args(0), 10)
-		case _ => graph ! GraphActor.Start(args(0), args(1).toInt)
+		case 0 ⇒ graph ! GraphActor.Start("/FourBridges.dgs", 10)
+		case 1 ⇒ graph ! GraphActor.Start(args(0), 10)
+		case _ ⇒ graph ! GraphActor.Start(args(0), args(1).toInt)
 	}
 }
 
@@ -267,7 +267,7 @@ class GraphActor() extends Actor {
 
 		src.removeSink(graph)			
 
-		nest = graph.getEachNode.find { node:Node => node.hasAttribute("nest") }.getOrElse {
+		nest = graph.getEachNode.find { node:Node ⇒ node.hasAttribute("nest") }.getOrElse {
 			throw new RuntimeException("You must provide a node with attribute 'nest' in the graph")
 		}
 
@@ -280,13 +280,13 @@ class GraphActor() extends Actor {
 		if(graph.hasNumber("maxPh"))       Ant.maxPh       = graph.getNumber("maxPh")
 		if(graph.hasNumber("antTypes"))    antTypes        = graph.getNumber("antTypes").toInt
 
-		graph.getEachEdge.foreach { edge:Edge => edge.addAttribute(Ph, Pheromone(antTypes)) }
+		graph.getEachEdge.foreach { edge:Edge ⇒ edge.addAttribute(Ph, Pheromone(antTypes)) }
 	}
 
 	/** Utility method to compute all the possible edges to explore from a given node.
 	  * Only outgoing edges are selected. */
 	protected def possibleEdges(node:Node):Array[EdgePheromones] = {
-		(node.getLeavingEdgeSet[Edge].map(edge => new EdgePheromones(edge))).toArray
+		(node.getLeavingEdgeSet[Edge].map(edge ⇒ new EdgePheromones(edge))).toArray
 	}		
 
 	/** Utility method to get the maximum pheromone level on an edge. The value
@@ -331,7 +331,7 @@ class GraphActor() extends Actor {
 
 	/** Apply evaporation on each edge. */
 	protected def evaporatePheromone() {
-		graph.getEachEdge.foreach { edge:Edge =>
+		graph.getEachEdge.foreach { edge:Edge ⇒
 			val p = edge.getAttribute(Ph).asInstanceOf[Pheromone]
 			p.evaporate
 			updateEdgeAppearance(edge, p.max)
@@ -341,7 +341,7 @@ class GraphActor() extends Actor {
 	/** Make the ant representation move, detect when ants reached intersections,
 	  * the nest or the food and send messages to their actor to notify these events. */
 	protected def moveAntsRepresentations() {
-		sprites.iterator.foreach { sprite =>
+		sprites.iterator.foreach { sprite ⇒
 			val antSprite = sprite.asInstanceOf[AntSprite]
 			if(antSprite.run) {
 				if(antSprite.goingBack) {
@@ -367,26 +367,26 @@ class GraphActor() extends Actor {
 
 	/** Behavior. */
 	def receive() = {
-		case Start(resource, antCount) => {
+		case Start(resource, antCount) ⇒ {
 			start(resource, antCount)
 		}
-		case ReceiveTimeout => {
+		case ReceiveTimeout ⇒ {
 			fromViewer.pump
 			hatchAntsIfNeeded
 			evaporatePheromone
 			moveAntsRepresentations
 		}
-		case AntGoesExploring(antId) => {
+		case AntGoesExploring(antId) ⇒ {
 			val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
 			antSprite.goBack(false)
 			antSprite.actor ! Ant.AtIntersection(possibleEdges(nest))
 		}
-		case AntGoesBack(antId) => {
+		case AntGoesBack(antId) ⇒ {
 			val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
 			antSprite.goBack(true)
 			antSprite.actor ! Ant.AtIntersection(null)
 		}
-		case AntCrosses(antId, edgeId, antType, drop) => {
+		case AntCrosses(antId, edgeId, antType, drop) ⇒ {
 			fromViewer.pump
 			val length = GraphPosLengthUtils.edgeLength(graph, edgeId)
 			val sprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
@@ -396,7 +396,7 @@ class GraphActor() extends Actor {
 			if(drop > 0)
 				dropPh(antType, drop, sprite.getAttachment.asInstanceOf[Edge])
 		}
-		case _ => {
+		case _ ⇒ {
 			println("Graph: WTF ??")
 		}
 	}
@@ -468,7 +468,7 @@ class Ant extends Actor {
 
 	/** Behavior. */
 	def receive() = {
-		case AtIntersection(edges) => {
+		case AtIntersection(edges) ⇒ {
 			var edge:String = null
 			var drop:Double = 0.0
 
@@ -483,10 +483,10 @@ class Ant extends Actor {
 			
 			sender ! GraphActor.AntCrosses(id, edge, antType, drop)
 		}
-		case AntType(theAntType) => {
+		case AntType(theAntType) ⇒ {
 			antType = theAntType
 		}
-		case AtFood(nodeFoodType) => {
+		case AtFood(nodeFoodType) ⇒ {
 			if(antType == nodeFoodType) {
 				goingBack = true
 				sender ! GraphActor.AntGoesBack(id)
@@ -495,15 +495,15 @@ class Ant extends Actor {
 				sender ! GraphActor.AntGoesExploring(id)
 			}
 		}
-		case AtNest => {
+		case AtNest ⇒ {
 			resetMemory
 			sender ! GraphActor.AntGoesExploring(id)
 		}
-		case Lost => {
+		case Lost ⇒ {
 			resetMemory
 			sender ! GraphActor.AntGoesExploring(id)
 		}
-		case _ => {
+		case _ ⇒ {
 			println("Ant: WTF ?!")
 		}
 	}
@@ -540,7 +540,7 @@ class Ant extends Actor {
 
 		// Compute the weights of each edge following Dorigo formula.
 
-		var weights = edges.map { edge =>
+		var weights = edges.map { edge ⇒
 			val weight = pow(edge.ph(antType), alpha) * (if(beta > 0) pow(1 / edge.length, beta) else 1.0)
 			sum += weight
 			(edge, weight)
@@ -554,9 +554,9 @@ class Ant extends Actor {
 			sum *= rnd
 			var tot = 0.0
 
-			weights.find { edge => tot += edge._2; tot >= sum } match {
-				case Some(e) => e._1
-				case None    => new EdgePheromones("<none>", 0.0, null)
+			weights.find { edge ⇒ tot += edge._2; tot >= sum } match {
+				case Some(e) ⇒ e._1
+				case None    ⇒ new EdgePheromones("<none>", 0.0, null)
 			}
 		}
 	}
