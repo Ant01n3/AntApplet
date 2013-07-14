@@ -127,6 +127,11 @@ Naturally the more ants used a path before, the more there is pheromone and ther
 
 However pheromone tend to evaporate with time and must be regularly dropped on the path. If no more food is available at the end of the path, ants will not lay down pheromones and the path will disappear with time. This negative feedback mechanism allows ant to forget old non interesting paths.
 
+As ants travel on edges at a constant speed, ants using shorter paths
+will reach food faster, and as they use the same path to go back to
+nest will also reach the nest faster. Therefore they will have a better chance to drop pheromones before others on the correct path, and therefore influence more other ants to use this path. This is one
+of the critical feature of the algorithm allowing to select the shortest paths.
+
 Here we model ants that lay down pheromone only on their back path to return to the nest. In nature, ants do not work like this (a future version may allow to choose when to drop pheromones, and eventually to choose to go back by a different path). 
 
 In our model, ants will choose the next edge to cross according to the following formula:
@@ -137,7 +142,7 @@ Where ``w`` is the weight of an edge, ``p`` is the pheromone on this edge, ``d``
 
     w = p^alpha
 
-When an ant encounters an intersection it considers each edge and determine a weight for these edges. Then using a biased fortune wheel, it chooses the next edge according to the weights. Note that this is a random process, biased by the edge weights, which means that an edge with a short length and a lot of pheromones has more chances to be chosen. However an ant can still take the "bad" edge. But this characteristic (which makes the algorithm non deterministic) is also a strength: this is what makes the ants able to find new better paths if the one they use actually is no more usable. This is also why the algorithm as a ``minPh`` value so that edges can always have a minimum pheromone value to let ants try it.
+When an ant encounters an intersection it considers each edge and determines a weight for these edges. Then using a biased fortune wheel, it chooses the next edge according to the weights. Note that this is a random process, biased by the edge weights, which means that an edge with a short length and a lot of pheromones has more chances to be chosen. However an ant can still take the "bad" edge. But this characteristic (which makes the algorithm non deterministic) is also a strength: this is what makes the ants able to find new better paths if the one they use actually is no more usable. This is also why the algorithm as a ``minPh`` value so that edges can always have a minimum pheromone value to let ants try it.
 
 You can see that the ant is not only influenced by the pheromone present on the edge, it also follows a kind of greedy algorithm by preferring short edges than long ones if ``beta`` is not zero. This is a not a good strategy to find shortest paths alone, but coupled with pheromones it may improves things. You can however completely remove this behavior by setting ``beta`` at zero.
 
@@ -171,38 +176,6 @@ Here is the behavior of an Ant:
 
 ```scala
     def receive() = {
-        case AtIntersection(edges) => {
-            var edge:String = null
-            var drop:Double = 0.0
-             
-            if(goingBack) {
-                edge = memory.pop
-                drop = if(gamma <=0) phDrop else phDrop / pow(pathSize, gamma)
-            } else {
-                val chosen = chooseNextEdge(edges)
-                edge = chosen._1
-                pathSize += chosen._3
-                memory.push(edge)
-            }
-            
-            sender ! GraphActor.AntCrosses(self.path.name, edge, drop)
-        }
-        case AtFood => {
-            goingBack = true
-            sender ! GraphActor.AntGoesBack(self.path.name)
-        }
-        case AtNest => {
-            pathSize = 0.0
-            goingBack = false
-            sender ! GraphActor.AntGoesExploring(self.path.name)
-        }
-        case Lost => {
-            pathSize = 0.0
-            memory.clear
-            goingBack = false
-            sender ! GraphActor.AntGoesExploring(self.path.name)
-        }
-        ...
     }
 ```
 
@@ -210,38 +183,6 @@ Here is the behavior of the graph actor:
 
 ```scala
     def receive() = {
-        case Start(resource, antCount) => {
-            start(resource, antCount)
-        }
-        case ReceiveTimeout => {
-            fromViewer.pump
-            hatchAnts
-            evaporate
-            moveSprites
-        }
-        case AntGoesExploring(antId) => {
-            val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
-            antSprite.goingBack = false
-            antSprite.removeAttribute("ui.class")
-            antSprite.controller ! Ant.AtIntersection(possibleEdges(nest))
-        }
-        case AntGoesBack(antId) => {
-            val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
-            antSprite.goingBack = true
-            antSprite.addAttribute("ui.class", "back")
-            antSprite.controller ! Ant.AtIntersection(null)
-        }
-        case AntCrosses(antId, edgeId, drop) => {
-            fromViewer.pump
-            val length = GraphPosLengthUtils.edgeLength(graph, edgeId)
-            val sprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
-            
-            sprite.cross(edgeId, length)
-            
-            if(drop > 0)
-                dropPheromone(drop, sprite.getAttachment.asInstanceOf[Edge])
-        }
-        ...
     }
 ```
 

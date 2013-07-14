@@ -113,6 +113,71 @@ class AntSprite(id:String, manager:SpriteManager, initialPosition:Values) extend
 }
 
 
+// -- Pheromone ------------------------------------------------------------------------------
+
+
+/** Represent a set of pheromone values to be stored on an edge.
+  * As there can exist several ant types, there also can exist several
+  * pheromone types. Therefore a pheromone object represents a set
+  * of value, not only one. */
+case class Pheromone(count:Int) {
+	/** The pheromone values. */
+	val ph = new Array[Double](count)
+
+	init
+
+	/** Maximum pheromone value on this edge. */
+	var max = 0.0
+
+	/** Initialize all pheromones to [[Ant.minPh]]. */
+	protected def init() {
+		var i = 0
+		while(i < count) { ph(i) = Ant.minPh; i += 1 }
+		max = Ant.minPh
+	}
+
+	/** Multiply each pheromone type by the [[Ant.evaporation]] value. If the
+	  * pheromone value is less than [[Ant.minPh]], it is reset to [[Ant.minPh]]. */
+	def evaporate() {
+		var i = 0
+		max = 0.0
+		while(i < count) {
+			ph(i) *= Ant.evaporation
+			if(ph(i) < Ant.minPh) ph(i) = Ant.minPh
+			if(ph(i) > max) max = ph(i)
+			i += 1
+		}
+	}
+
+	/** Add a pheromone `value` for a given `antType`. If the value becomes
+	  * larger than [[Ant.maxPh]], it is reset to [[Ant.maxPh]]. */
+	def drop(antType:Int, value:Double) {
+		ph(antType) += value 
+		if(ph(antType) > Ant.maxPh) ph(antType) = Ant.maxPh
+		if(ph(antType) > max) max = ph(antType)
+	}
+
+	/** Pheromone value for the given `antType`. */
+	def value(antType:Int):Double = ph(antType)
+
+	/** Make a copy of the pheromones values under the form or an array of doubles. */
+	def toArray():Array[Double] = ph.clone
+}
+
+
+/** Pheromone specifier for an edge. This is sent to ants as a constant (ant do not act
+  * directly on values stored on the graph). */
+class EdgePheromones(val id:String, val length:Double, val pheromones:Array[Double]) {
+	def this(edge:Edge) {
+		this(edge.getId, GraphPosLengthUtils.edgeLength(edge), edge.getAttribute(GraphActor.Ph).asInstanceOf[Pheromone].toArray)
+	}
+
+	/** Pheromone value for the given `antType`. */
+	def ph(antType:Int):Double = pheromones(antType)
+}
+
+
+
 // -- Graph Actor ----------------------------------------------------------------------------
 
 
@@ -124,10 +189,11 @@ object GraphActor {
 	case class Start(graphResource:String = "/TwoBridges.dgs", antCount:Int = 10)
 
 	/** The ant `antId` is now on edge `edgeId` at the start of it. Doing so it will
-	  * deposit the given 'drop' quantity of pheromone on the edge.
+	  * deposit the given 'pheromon' quantity of pheromone on the edge. The `antType`
+	  * allows to specify the kind of pheromone to drop.
 	  * Most often this message comes after the graph sent a [[Ant.AtIntersection]]
 	  * message. */
-	case class AntCrosses(antId:String, edgeId:String, pheromon:Double=0.0)
+	case class AntCrosses(antId:String, edgeId:String, antType:Int=0, pheromon:Double=0.0)
 
 	/** The ant `antId` starts exploring from the nest. */
 	case class AntGoesExploring(antId:String)
@@ -163,6 +229,9 @@ class GraphActor() extends Actor {
 
 	/** Maximum number of ants. */
 	var antCount:Int = 0
+
+	/** Number of ant types. */
+	var antTypes:Int = 1
 
 	/** Start the actor and all ant sub-actors. */
 	protected def start(resource:String, count:Int) {
@@ -207,64 +276,59 @@ class GraphActor() extends Actor {
 		if(graph.hasNumber("phDrop"))      Ant.phDrop      = graph.getNumber("phDrop")
 		if(graph.hasNumber("minPh"))       Ant.minPh       = graph.getNumber("minPh")
 		if(graph.hasNumber("maxPh"))       Ant.maxPh       = graph.getNumber("maxPh")
+		if(graph.hasNumber("antTypes"))    antTypes        = graph.getNumber("antTypes").toInt
 
-		graph.getEachEdge.foreach { edge:Edge => edge.addAttribute(Ph, (Ant.minPh).asInstanceOf[AnyRef]) }
+		graph.getEachEdge.foreach { edge:Edge => edge.addAttribute(Ph, Pheromone(antTypes)) }
 	}
 
 	/** Utility method to compute all the possible edges to explore from a given node.
-	  * Only outgoing edges are selected. The returned array contains pairs of edge
-	  * identifiers and their lengths. */
-	protected def possibleEdges(node:Node):Array[(String,Double,Double)] = {
-		(node.getLeavingEdgeSet[Edge].map { edge =>
-			(edge.getId, edge.getNumber(Ph), GraphPosLengthUtils.edgeLength(edge)) 
-		}).toArray
+	  * Only outgoing edges are selected. */
+	protected def possibleEdges(node:Node):Array[EdgePheromones] = {
+		(node.getLeavingEdgeSet[Edge].map(edge => new EdgePheromones(edge))).toArray
 	}		
 
-	/** Utility method to get the pheromone level on an edge. */
-	protected def getPh(edge:Edge):Double = edge.getNumber(Ph)
+	/** Utility method to get the maximum pheromone level on an edge. The value
+	  * returned is the maximum value for one of the ant types. */
+	protected def getPh(edge:Edge):Double = edge.getAttribute(Ph).asInstanceOf[Pheromone].max
 
-	/** Utility method to store some pheromone quantity `ph` on an edge. */
-	protected def updatePh(ph:Double, edge:Edge) {
-		edge.setAttribute(Ph, ph.asInstanceOf[AnyRef])
-		edge.setAttribute("ui.label", "%.2f".format(ph))
-		edge.setAttribute("ui.color", (ph/Ant.maxPh).asInstanceOf[AnyRef])
-	}
-
-	/** Utility method to read the phromone level of an edge and add to it the given
-	  * quantity `ph`. */
-	protected def dropPheromone(ph:Double, edge:Edge) {
-		var phe = ph + getPh(edge)
-		if(phe > Ant.maxPh) phe = Ant.maxPh
-		updatePh(phe, edge)
+	/** Utility method to drop some pheromone quantity `ph` on an edge. */
+	protected def dropPh(antType:Int, ph:Double, edge:Edge) {
+		val p = edge.getAttribute(Ph).asInstanceOf[Pheromone]
+		p.drop(antType, ph)
+		edge.setAttribute("ui.label", "%.2f".format(p.max))
+		edge.setAttribute("ui.color", (p.max/Ant.maxPh).asInstanceOf[AnyRef])
 	}
 
 	/** Create a new ant if the total count is not reached. */
-	protected def hatchAntsIfNeeded() {
-		if(sprites.getSpriteCount < antCount) {
-			hatchAnt
-		}
-	}
+	protected def hatchAntsIfNeeded() { if(sprites.getSpriteCount < antCount) { hatchAnt } }
 
 	/** Create an ant on the nest. */
 	protected def hatchAnt() {
-		val id     = "ant%d".format(sprites.getSpriteCount)
+		val n      = sprites.getSpriteCount
+		val id     = "ant%d".format(n)
 		val sprite = sprites.addSprite(id).asInstanceOf[AntSprite]
 
 		sprite.actor = context.actorOf(Props[Ant], name=id)
+		sprite.actor ! Ant.AntType(n % antTypes)
 		sprite.actor ! Ant.AtIntersection(possibleEdges(nest))
 	}
 
+	/** Utility to move a `node` to position (`x`, `y`). */
 	protected def nodePosition(node:Node, x:Int, y:Int) {
 		node.setAttribute("xy", x.asInstanceOf[java.lang.Integer], y.asInstanceOf[java.lang.Integer]) 
 	}
 
+	/** Utility method to retrieve the food type of a node returns 0 by default if
+	  * the attribute is not present. */
+	protected def foodType(node:Node):Int = if(node.hasNumber("foodType")) { node.getNumber("foodType").toInt } else { 0 }
+
 	/** Apply evaporation on each edge. */
 	protected def evaporatePheromone() {
 		graph.getEachEdge.foreach { edge:Edge =>
-			var ph = getPh(edge)
-			ph *= Ant.evaporation
-			if(ph < Ant.minPh) ph = Ant.minPh
-			updatePh(ph, edge)
+			val p = edge.getAttribute(Ph).asInstanceOf[Pheromone]
+			p.evaporate
+			edge.setAttribute("ui.label", "%.2f".format(p.max))
+			edge.setAttribute("ui.color", (p.max/Ant.maxPh).asInstanceOf[AnyRef])
 		}
 	}
 
@@ -282,7 +346,7 @@ class GraphActor() extends Actor {
 					}
 				} else {
 					if(antSprite.endPoint.hasAttribute("food")) {
-						antSprite.actor ! Ant.AtFood
+						antSprite.actor ! Ant.AtFood(foodType(antSprite.endPoint))
 					} else {
 						val edges = possibleEdges(antSprite.endPoint)
 
@@ -316,7 +380,7 @@ class GraphActor() extends Actor {
 			antSprite.goBack(true)
 			antSprite.actor ! Ant.AtIntersection(null)
 		}
-		case AntCrosses(antId, edgeId, drop) => {
+		case AntCrosses(antId, edgeId, antType, drop) => {
 			fromViewer.pump
 			val length = GraphPosLengthUtils.edgeLength(graph, edgeId)
 			val sprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
@@ -324,7 +388,7 @@ class GraphActor() extends Actor {
 			sprite.cross(edgeId, length)
 
 			if(drop > 0)
-				dropPheromone(drop, sprite.getAttachment.asInstanceOf[Edge])
+				dropPh(antType, drop, sprite.getAttachment.asInstanceOf[Edge])
 		}
 		case _ => {
 			println("Graph: WTF ??")
@@ -356,14 +420,18 @@ object Ant {
 	/** Relative importance of edge length when ants choose a path (greedy algorithm). */
 	var beta = 1.5
 
+	/** How to augment the pheromone level of tracks depending on the track length. */
 	var gamma = 3.0
 
-	/** The ant reached an intersection. The data is a set of triplets (edge
-	  * identifier, pheromone level, length). */
-	case class AtIntersection(edges:Array[(String,Double,Double)])
+	/** Specify the type of the ant (this changes the pheromone type). */
+	case class AntType(antType:Int)
 
-	/** The ant reached a food source. */
-	case class AtFood()
+	/** The ant reached an intersection. */
+	case class AtIntersection(edges:Array[EdgePheromones])
+
+	/** The ant reached a food source. The parameter is an optional food type
+	  * for ants to decide if they consume it or not depending on their ant type. */
+	case class AtFood(foodType:Int=0)
 
 	/** The ant reached the nest. */
 	case class AtNest()
@@ -389,6 +457,9 @@ class Ant extends Actor {
 	/** Random generator. */
 	var random = scala.util.Random
 
+	/** Ant type. */
+	var antType = 0
+
 	/** Behavior. */
 	def receive() = {
 		case AtIntersection(edges) => {
@@ -400,16 +471,26 @@ class Ant extends Actor {
 				drop = if(gamma <=0) phDrop else phDrop / pow(pathSize, gamma)
 			} else {
 				val chosen = chooseNextEdge(edges)
-				edge = chosen._1
-				pathSize += chosen._3
+				edge = chosen.id
+				pathSize += chosen.length
 				memory.push(edge)
 			}
 			
-			sender ! GraphActor.AntCrosses(self.path.name, edge, drop)
+			sender ! GraphActor.AntCrosses(self.path.name, edge, antType, drop)
 		}
-		case AtFood => {
-			goingBack = true
-			sender ! GraphActor.AntGoesBack(self.path.name)
+		case AntType(theAntType) => {
+			antType = theAntType
+		}
+		case AtFood(nodeFoodType) => {
+			if(antType == nodeFoodType) {
+				goingBack = true
+				sender ! GraphActor.AntGoesBack(self.path.name)				
+			} else {
+				pathSize = 0.0
+				memory.clear
+				goingBack = false
+				sender ! GraphActor.AntGoesExploring(self.path.name)
+			}
 		}
 		case AtNest => {
 			pathSize = 0.0
@@ -429,21 +510,21 @@ class Ant extends Actor {
 
 	/** Choose the next edge to cross purely at random, each edge has
 	  * uniform probability to be chosen. */
-	def chooseNextEdgeRandom(edges:Array[(String,Double,Double)]):(String,Double,Double) = { edges(random.nextInt(edges.length)) }
+	def chooseNextEdgeRandom(edges:Array[EdgePheromones]):EdgePheromones = { edges(random.nextInt(edges.length)) }
 	
 	/** Choose the next edge to cross according to pheromones and lengths of the edges.
 	  * The weight is compute from relative pheromone and length importance. The paramter
 	  * [[Ant.Alpha]] and [[Ant.Beta]] allow to change these relative importance.
 	  * The compute array of weights is then used to find the next edge using a biased
 	  * fortune wheel. */
-	def chooseNextEdge(edges:Array[(String,Double,Double)]):(String,Double,Double) = {
+	def chooseNextEdge(edges:Array[EdgePheromones]):EdgePheromones = {
 		var sum = 0.0
 		var rnd = random.nextDouble
 
 		// Compute the weights of each edge following Dorigo formula.
 
 		var weights = edges.map { edge =>
-			val weight = pow(edge._2, alpha) * (if(beta>0) pow(1/edge._3, beta) else 1.0)
+			val weight = pow(edge.ph(antType), alpha) * (if(beta > 0) pow(1 / edge.length, beta) else 1.0)
 			sum += weight
 			(edge, weight)
 		}
@@ -458,7 +539,7 @@ class Ant extends Actor {
 
 			weights.find { edge => tot += edge._2; tot >= sum } match {
 				case Some(e) => e._1
-				case None    => ("",0.0,0.0)
+				case None    => new EdgePheromones("<none>", 0.0, null)
 			}
 		}
 	}
