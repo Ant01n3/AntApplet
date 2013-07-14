@@ -28,6 +28,6 @@ ae HFood H > Food
 cg antCount=10
 cg phDrop=80
 
-cg "ui.title"="Ants !"
+cg "ui.title"="Symetric Bridges"
 cg "ui.antialias"
 cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: grey; } node.food { size: 15px; fill-color: green; } edge { arrow-shape: none; size: 5px; fill-mode: dyn-plain; fill-color: grey, green, orange, red; } sprite { fill-color: red; } sprite.back { fill-color: green; }"

@@ -137,6 +137,6 @@ cg phDrop=1
 cg beta=1.0
 cg alpha=1.2
 
-cg "ui.title"="Ants !"
+cg "ui.title"="Three Food Sources"
 cg "ui.antialias"
 cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: blue; } node.food { size: 15px; fill-color: green; } edge { size: 5px; fill-mode: dyn-plain; fill-color: white, grey, blue, red; } sprite { fill-color: red; } sprite.back { fill-color: green; }"
