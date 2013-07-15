@@ -151,9 +151,9 @@ Here we model ants that lay down pheromone only on their back path to return to 
 
 In our model, ants will choose the next edge to cross according to the following formula:
 
-    w = p^alpha * (1-d)^beta
+    w = p^alpha * (1/d)^beta
 
-![equation](http://latex.codecogs.com/gif.latex?w%3Dp%5E%7B%5Calpha%7D*%281-d%29%5E%7B%5Cbeta%7D)
+![equation](http://latex.codecogs.com/gif.latex?w%3Dp%5E%7B%5Calpha%7D*%281%2Fd%29%5E%7B%5Cbeta%7D)
 
 Where ``w`` is the weight of an edge, ``p`` is the pheromone on this edge, ``d`` is the length of this edge. Parameters ``alpha`` and ``beta`` allow to balance the relative importance of pheromones versus edge lengths. If ``beta`` is zero, the implementation uses the formula:
 
