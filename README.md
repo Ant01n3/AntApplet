@@ -166,6 +166,8 @@ the quantity dropped is the constant ``phDrop`` else we use the formula:
 
     drop = phDrop / l^gamma
 
+![equation](http://latex.codecogs.com/gif.latex?drop+%3D+%5Cfrac%7BphDrow%7D%7Bl%5E%7B%5Cgamma%7D%7D)
+
 Where ``l`` is the length of the path of the ant toward food. Here again you can choose to have a constant, or to use the path length. This may change drastically the behavior of the ants.
 
 Be careful that ``phDrop`` depends on several things:
