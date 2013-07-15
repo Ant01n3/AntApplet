@@ -252,10 +252,10 @@ Here is the behavior of an Ant:
             var drop:Double = 0.0
 
             if(goingBack) {
-                edge = memory.pop
-                drop = if(gamma <=0) phDrop else phDrop / pow(pathSize, gamma)
+                edge = chooseNextEdgeBackward(edges)
+                drop = if(gamma <= 0) phDrop else phDrop / pow(pathLength, gamma)
             } else {
-                val chosen = chooseNextEdge(edges)
+                val chosen = chooseNextEdgeForward(edges)
                 edge       = chosen.id
                 memorize(chosen)
             }
@@ -285,7 +285,7 @@ Here is the behavior of an Ant:
     }
 ```
 
-All the protocol between the environment and the ants is explained above. All the model however is expressed in the way the ants choose the next edge to cross when exploring, and on the quantity of pheromone they drop on edges when returning. You can have a look at the ``Ant.chooseNextEdge()`` method and at the ``AtIntersection`` message handling in ``Ant.receive()`` to see how the model is implemented.
+All the protocol between the environment and the ants is explained above. All the model however is expressed in the way the ants choose the next edge to cross when exploring, and on the quantity of pheromone they drop on edges when returning. You can have a look at the ``Ant.chooseNextEdgeForward()`` and ``Ant.chooseNextEdgeBackward()`` methods and at the ``AtIntersection`` message handling in ``Ant.receive()`` to see how the model is implemented.
 
 Implementation note 1: this implementation can be seen as an academic treatment of the problem. We do not seek to be the fastest way to do it or the more complete with lots of parameters. Instead we try to be as simple as possible, and allowing experimentation. This is also a way to experiment on the actor model, which is remarkably suited for such "simulation" problems.
 
