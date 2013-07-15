@@ -9,7 +9,7 @@ This readme contains the following information:
 
 * [Installation and use](#installation-and-use)
 * [Changing the ant environment graph](#how-to-change-the-graph)
-* [Creating your how ant environment graphs](#how-to-make-a-graph-for-the-applet)
+* [Creating your own ant environment graphs](#how-to-make-a-graph-for-the-applet)
 * [The ant model used](#the-model)
 * [The implementation](#the-implementation)
 
@@ -130,7 +130,7 @@ You can find more details about this on the [stylesheet documentation page](http
 The model
 ---------
 
-The model for the ant behavior is inspired by works from [Jean-Louis Deneubourg](http://www.ulb.ac.be/sciences/use/deneubourg%20publications.html) and [Marco Dorigo](http://www.scholarpedia.org/article/Ant_colony_optimization). The idea is that ants uses a constrained environment modeled as a graph. They start from a nest node and travel freely on the graph until they reach a food node. They consume this food and go back to the nest usually following the same path and dropping pheromones on it only when coming back.
+The model for the ant behavior is inspired by works from [Jean-Louis Deneubourg](http://www.ulb.ac.be/sciences/use/deneubourg%20publications.html) and [Marco Dorigo](http://www.scholarpedia.org/article/Ant_colony_optimization). The idea is that ants uses a constrained environment modeled as a graph. They start from a nest node and travel freely on the graph until they reach a food node. They consume this food and go back to the nest (following the same path or not) and dropping pheromones on it only when coming back.
 
 This model is inspired from nature and the works of Jean-Louis Deneubourg, but it departs from it on lots of points. First ants behavior is far more complex than that, they do not only use pheromones to choose their paths. Then the behavior depends on the species. 
 
