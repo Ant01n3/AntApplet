@@ -7,7 +7,7 @@ The program uses [Scala](http://www.scala-lang.org/) and the [actor model](http:
 
 This readme contains the following information:
 
-* Installation and use
+* [Installation and use](installation-and-use)
 * Changing the ant environment graph
 * Creating your how ant environment graphs
 * The ant model used
