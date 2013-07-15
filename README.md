@@ -153,9 +153,13 @@ In our model, ants will choose the next edge to cross according to the following
 
     w = p^alpha * (1-d)^beta
 
+![equation](http://latex.codecogs.com/gif.latex?w%3Dp%5E%7B%5Calpha%7D*%281-d%29%5E%7B%5Cbeta%7D)
+
 Where ``w`` is the weight of an edge, ``p`` is the pheromone on this edge, ``d`` is the length of this edge. Parameters ``alpha`` and ``beta`` allow to balance the relative importance of pheromones versus edge lengths. If ``beta`` is zero, the implementation uses the formula:
 
     w = p^alpha
+
+![equation](http://latex.codecogs.com/gif.latex?w%3Dp%5E%7B%5Calpha%7D)
 
 When an ant encounters an intersection it considers each edge and determines a weight for these edges. Then using a biased fortune wheel, it chooses the next edge according to the weights. Note that this is a random process, biased by the edge weights, which means that an edge with a short length and a lot of pheromones has more chances to be chosen. However an ant can still take the "bad" edge. But this characteristic (which makes the algorithm non deterministic) is also a strength: this is what makes the ants able to find new better paths if the one they use actually is no more usable. This is also why the algorithm as a ``minPh`` value so that edges can always have a minimum pheromone value to let ants try it.
 
@@ -166,7 +170,7 @@ the quantity dropped is the constant ``phDrop`` else we use the formula:
 
     drop = phDrop / l^gamma
 
-![equation](http://latex.codecogs.com/gif.latex?drop+%3D+%5Cfrac%7BphDrow%7D%7Bl%5E%7B%5Cgamma%7D%7D)
+![equation](http://latex.codecogs.com/gif.latex?drop%3D%5Cfrac%7BphDrop%7D%7Bl%5E%7B%5Cgamma%7D%7D)
 
 Where ``l`` is the length of the path of the ant toward food. Here again you can choose to have a constant, or to use the path length. This may change drastically the behavior of the ants.
 
