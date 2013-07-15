@@ -482,11 +482,14 @@ class Ant extends Actor {
 	/** Random generator. */
 	protected var random = scala.util.Random
 
-	/** Ant type. */
+	/** Ant type, changes the kind of pehomones used to choose edges. */
 	protected var antType = 0
 
 	/** Behavior. */
 	def receive() = {
+		case AntType(theAntType) ⇒ {
+			antType = theAntType
+		}
 		case AtIntersection(edges) ⇒ {
 			var edge:String = null
 			var drop:Double = 0.0
@@ -501,9 +504,6 @@ class Ant extends Actor {
 			}
 			
 			sender ! Environment.AntCrosses(id, edge, antType, drop)
-		}
-		case AntType(theAntType) ⇒ {
-			antType = theAntType
 		}
 		case AtFood(nodeFoodType) ⇒ {
 			if(antType == nodeFoodType) {
