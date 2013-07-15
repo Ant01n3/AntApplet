@@ -116,6 +116,7 @@ The command ``cg`` (change graph) will add the attribute ``antCount`` with a num
     cg gamma=3.0         # phDrop / pow(pathLengh,gamma), if 0, use only constant phDrop.
     cg minPh=0.1         # Minimum pheromone quantity on edges
     cg evaporation=0.995 # The edge pheromone 'conservation' at each step.
+    cg speed=0.1         # Speed of ants.
     cg noMemory          # If present the ants have no memory of their exploration path, else the ants will go back using exactly their exploration path.
 
 The values given above are the defaults. The evaporation rate is naturally tied to the number of ants.

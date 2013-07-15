@@ -68,10 +68,10 @@ class AntSprite(id:String, manager:SpriteManager, initialPosition:Values) extend
 	def cross(edge:String, length:Double) {
 		if(goingBack) {
 			pos   =  1.0
-			speed = -1.0 / (length/0.1)
+			speed = -1.0 / (length/Ant.speed)
 		} else {
 			pos   = 0.0
-			speed = 1.0 / (length/0.1)
+			speed = 1.0 / (length/Ant.speed)
 		}
 		
 		attachToEdge(edge)
@@ -282,6 +282,7 @@ class Environment() extends Actor {
 		if(graph.hasNumber("phDrop"))       Ant.phDrop      = graph.getNumber("phDrop")
 		if(graph.hasNumber("minPh"))        Ant.minPh       = graph.getNumber("minPh")
 		if(graph.hasNumber("maxPh"))        Ant.maxPh       = graph.getNumber("maxPh")
+		if(graph.hasNumber("speed"))        Ant.speed       = graph.getNumber("speed")
 		if(graph.hasNumber("antTypes"))     antTypes        = graph.getNumber("antTypes").toInt
 		if(graph.hasAttribute("noMemory"))  Ant.useMemory   = false else Ant.useMemory = true
 
@@ -446,6 +447,9 @@ object Ant {
 	/** Do ants have a memory allowing them to remember their path toward food and use
 	  * it to go back at the nest ? */
 	var useMemory = true
+
+	/** Speed of ants. */
+	var speed = 0.1
 
 	/** Specify the type of the ant (this changes the pheromone type). */
 	case class AntType(antType:Int)
