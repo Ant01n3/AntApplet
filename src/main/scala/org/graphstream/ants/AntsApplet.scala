@@ -58,6 +58,9 @@ class AntSprite(id:String, manager:SpriteManager, initialPosition:Values) extend
 	/** True if on the way back. */
 	var goingBack = false
 
+	/** Last food node reached. */
+	var lastFood:Node = null
+
 	/** The actor and the real ant behavior. */
 	var actor:ActorRef = null
 
@@ -271,22 +274,28 @@ class Environment() extends Actor {
 			throw new RuntimeException("You must provide a node with attribute 'nest' in the graph")
 		}
 
-		if(graph.hasNumber("antCount"))    antCount        = graph.getNumber("antCount").toInt
-		if(graph.hasNumber("evaporation")) Ant.evaporation = graph.getNumber("evaporation")
-		if(graph.hasNumber("alpha"))       Ant.alpha       = graph.getNumber("alpha")
-		if(graph.hasNumber("beta"))        Ant.beta        = graph.getNumber("beta")
-		if(graph.hasNumber("phDrop"))      Ant.phDrop      = graph.getNumber("phDrop")
-		if(graph.hasNumber("minPh"))       Ant.minPh       = graph.getNumber("minPh")
-		if(graph.hasNumber("maxPh"))       Ant.maxPh       = graph.getNumber("maxPh")
-		if(graph.hasNumber("antTypes"))    antTypes        = graph.getNumber("antTypes").toInt
+		if(graph.hasNumber("antCount"))     antCount        = graph.getNumber("antCount").toInt
+		if(graph.hasNumber("evaporation"))  Ant.evaporation = graph.getNumber("evaporation")
+		if(graph.hasNumber("alpha"))        Ant.alpha       = graph.getNumber("alpha")
+		if(graph.hasNumber("beta"))         Ant.beta        = graph.getNumber("beta")
+		if(graph.hasNumber("gamma"))		Ant.gamma       = graph.getNumber("gamma")
+		if(graph.hasNumber("phDrop"))       Ant.phDrop      = graph.getNumber("phDrop")
+		if(graph.hasNumber("minPh"))        Ant.minPh       = graph.getNumber("minPh")
+		if(graph.hasNumber("maxPh"))        Ant.maxPh       = graph.getNumber("maxPh")
+		if(graph.hasNumber("antTypes"))     antTypes        = graph.getNumber("antTypes").toInt
+		if(graph.hasAttribute("noMemory"))  Ant.useMemory   = false else Ant.useMemory = true
 
 		graph.getEachEdge.foreach { edge:Edge ⇒ edge.addAttribute(Ph, Pheromone(antTypes)) }
 	}
 
-	/** Utility method to compute all the possible edges to explore from a given node.
-	  * Only outgoing edges are selected. */
-	protected def possibleEdges(node:Node):Array[EdgePheromones] = {
+	/** Utility method to compute all the possible edges to explore leaving a given node. */
+	protected def possibleEdgesForward(node:Node):Array[EdgePheromones] = {
 		(node.getLeavingEdgeSet[Edge].map(edge ⇒ new EdgePheromones(edge))).toArray
+	}		
+
+	/** Utility method to compute all the possible edges to explore entering a given node. */
+	protected def possibleEdgesBackward(node:Node):Array[EdgePheromones] = {
+		(node.getEnteringEdgeSet[Edge].map(edge ⇒ new EdgePheromones(edge))).toArray
 	}		
 
 	/** Utility method to get the maximum pheromone level on an edge. The value
@@ -317,7 +326,7 @@ class Environment() extends Actor {
 
 		sprite.actor = context.actorOf(Props[Ant], name=id)
 		sprite.actor ! Ant.AntType(n % antTypes)
-		sprite.actor ! Ant.AtIntersection(possibleEdges(nest))
+		sprite.actor ! Ant.AtIntersection(possibleEdgesForward(nest))
 	}
 
 	/** Utility to move a `node` to position (`x`, `y`). */
@@ -348,13 +357,18 @@ class Environment() extends Actor {
 					if(antSprite.endPoint.hasAttribute("nest")) {
 						antSprite.actor ! Ant.AtNest
 					} else {
-						antSprite.actor ! Ant.AtIntersection(null)
+						val edges = possibleEdgesBackward(antSprite.endPoint)
+
+						if(edges.length > 0)
+						     antSprite.actor ! Ant.AtIntersection(edges)
+						else antSprite.actor ! Ant.Lost
 					}
 				} else {
 					if(antSprite.endPoint.hasAttribute("food")) {
+						antSprite.lastFood = antSprite.endPoint
 						antSprite.actor ! Ant.AtFood(foodType(antSprite.endPoint))
 					} else {
-						val edges = possibleEdges(antSprite.endPoint)
+						val edges = possibleEdgesForward(antSprite.endPoint)
 
 						if(edges.length > 0)
 						     antSprite.actor ! Ant.AtIntersection(edges)
@@ -379,12 +393,12 @@ class Environment() extends Actor {
 		case AntGoesExploring(antId) ⇒ {
 			val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
 			antSprite.goBack(false)
-			antSprite.actor ! Ant.AtIntersection(possibleEdges(nest))
+			antSprite.actor ! Ant.AtIntersection(possibleEdgesForward(nest))
 		}
 		case AntGoesBack(antId) ⇒ {
 			val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
 			antSprite.goBack(true)
-			antSprite.actor ! Ant.AtIntersection(null)
+			antSprite.actor ! Ant.AtIntersection(possibleEdgesBackward(antSprite.lastFood))
 		}
 		case AntCrosses(antId, edgeId, antType, drop) ⇒ {
 			fromViewer.pump
@@ -429,6 +443,10 @@ object Ant {
 	/** How to augment the pheromone level of tracks depending on the track length. */
 	var gamma = 3.0
 
+	/** Do ants have a memory allowing them to remember their path toward food and use
+	  * it to go back at the nest ? */
+	var useMemory = true
+
 	/** Specify the type of the ant (this changes the pheromone type). */
 	case class AntType(antType:Int)
 
@@ -458,7 +476,8 @@ class Ant extends Actor {
 	  * the memory to follow the path used at start. */
 	protected var goingBack = false
 
-	protected var pathSize = 0.0
+	/** The length of the path during exploration phase. */
+	protected var pathLength = 0.0
 
 	/** Random generator. */
 	protected var random = scala.util.Random
@@ -473,10 +492,10 @@ class Ant extends Actor {
 			var drop:Double = 0.0
 
 			if(goingBack) {
-				edge = memory.pop
-				drop = if(gamma <=0) phDrop else phDrop / pow(pathSize, gamma)
+				edge = chooseNextEdgeBackward(edges)
+				drop = if(gamma <= 0) phDrop else phDrop / pow(pathLength, gamma)
 			} else {
-				val chosen = chooseNextEdge(edges)
+				val chosen = chooseNextEdgeForward(edges)
 				edge       = chosen.id
 				memorize(chosen)
 			}
@@ -510,15 +529,17 @@ class Ant extends Actor {
 
 	/** If the ant is lost, clear memory, path size, and ensure the ant is ready to start exploring. */
 	protected def resetMemory() {
-		goingBack = false
-		pathSize  = 0.0
+		goingBack  = false
+		pathLength = 0.0
 		memory.clear
 	}
 
+
 	/** Push in memory the given `edge` and add its length to the path size. */
 	protected def memorize(edge:EdgePheromones) {
-		pathSize += edge.length
-		memory.push(edge.id)
+		pathLength += edge.length
+		if(Ant.useMemory)
+			memory.push(edge.id)
 	}
 
 	/** Ant identifier. */
@@ -534,7 +555,7 @@ class Ant extends Actor {
 	  * [[Ant.alpha]] and [[Ant.beta]] allow to change these relative importances.
 	  * The computed array of weights is then used to find the next edge using a biased
 	  * fortune wheel. */
-	protected def chooseNextEdge(edges:Array[EdgePheromones]):EdgePheromones = {
+	protected def chooseNextEdgeForward(edges:Array[EdgePheromones]):EdgePheromones = {
 		var sum = 0.0
 		var rnd = random.nextDouble
 
@@ -558,6 +579,19 @@ class Ant extends Actor {
 				case Some(e) ⇒ e._1
 				case None    ⇒ new EdgePheromones("<none>", 0.0, null)
 			}
+		}
+	}
+
+	/** Choose the next edge to cross when boing back to the nest. Here depending
+	  * on the presence or not of a memory, the ant will either select the next
+	  * memorized edge to cross to go back following the forward path in reverser
+	  * order. Else it will select the path back using the same mechanism as for
+	  * the forward path (using pheromone, edges lengths, etc.). */
+	protected def chooseNextEdgeBackward(edges:Array[EdgePheromones]):String = {
+		if(Ant.useMemory) {
+			memory.pop
+		} else {
+			chooseNextEdgeForward(edges).id
 		}
 	}
 }

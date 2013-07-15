@@ -116,6 +116,7 @@ The command ``cg`` (change graph) will add the attribute ``antCount`` with a num
     cg gamma=3.0         # phDrop / pow(pathLengh,gamma), if 0, use only constant phDrop.
     cg minPh=0.1         # Minimum pheromone quantity on edges
     cg evaporation=0.995 # The edge pheromone 'conservation' at each step.
+    cg noMemory          # If present the ants have no memory of their exploration path, else the ants will go back using exactly their exploration path.
 
 The values given above are the defaults. The evaporation rate is naturally tied to the number of ants.
 
@@ -142,11 +143,11 @@ Naturally the more ants used a path before, the more there is pheromone and ther
 However pheromone tend to evaporate with time and must be regularly dropped on the path. If no more food is available at the end of the path, ants will not lay down pheromones and the path will disappear with time. This negative feedback mechanism allows ant to forget old non interesting paths.
 
 As ants travel on edges at a constant speed, ants using shorter paths
-will reach food faster, and as they use the same path to go back to
+will reach food faster, and if they use the same path to go back to
 nest will also reach the nest faster. Therefore they will have a better chance to drop pheromones before others on the correct path, and therefore influence more other ants to use this path. This is one
 of the critical feature of the algorithm allowing to select the shortest paths.
 
-Here we model ants that lay down pheromone only on their back path to return to the nest. In nature, ants do not work like this (a future version may allow to choose when to drop pheromones, and eventually to choose to go back by a different path). 
+Here we model ants that lay down pheromone only on their back path to return to the nest. In nature, ants do not work like this (a future version may allow to choose when to drop pheromones). 
 
 In our model, ants will choose the next edge to cross according to the following formula:
 
@@ -165,7 +166,7 @@ the quantity dropped is the constant ``phDrop`` else we use the formula:
 
     drop = phDrop / l^gamma
 
-Where ``l`` is the length of the path of the ant. Here again you can choose to have a constant, or to use the path length. This may change drastically the behavior of the ants.
+Where ``l`` is the length of the path of the ant toward food. Here again you can choose to have a constant, or to use the path length. This may change drastically the behavior of the ants.
 
 Be careful that ``phDrop`` depends on several things:
 - the size of the network,
@@ -173,6 +174,8 @@ Be careful that ``phDrop`` depends on several things:
 - the gamma parameter.
 
 Therefore the two most important parameters that you must change for each network is ``antCount`` and ``phDrop``.
+
+There is another parameter nammed ``noMemory``. This parameter allows to choose if the ant, once it has found food, will go back to the nest using the same path it used to find food or using another path. When using memory, when returning to the nest, ants will use their memory to travel back to the nest using edges in reverse order in their memory. They do not do any choice. When not using memory, ants use the same formula as when searching for food to evaluate which edge to choose. Most of the time, when you use ``noMemory`` you also want to set ``gamma`` to zero, since the ant will not necessarily use the same path as during exploration when returning to the nest, it is not interesting to drop a quantity of pheromone that depends on the path length.
 
 The implementation
 ------------------
