@@ -202,7 +202,7 @@ The components of this applet:
 
 As often with actors, the best starting point to read the program is their respective ``receive`` method. These method implement the behavior of the actors.
 
-The environment has a special ``ReceiveTimeout`` behavior that is called automatically by the system every 10 milliseconds. This clock behavior allows to implement the moving of ant representations, the pheromone evaporation, etc.
+The environment has a special ``ReceiveTimeout`` behavior that is called automatically by the system every 10 milliseconds. This clock behavior allows to implement the moving of ant representations, the pheromone evaporation, etc. And it ensures that all remains synchronous (no ant goes faster than another).
 
 Then the environment will "talk" with the various ant actors by exchanging messages. First the environment will create an ant actor at each timeout if the required total number of ants is not reached. This allows to launch ants one by one. Just after creating an ant, the environment sends it two messages. First a ``AntType`` that allows the ant to know its species (by default there is only one species). Then a ``AtIntersection`` message. These messages contain information (pheromone values, lengths, identifiers) on all the edges that leave a node. This first message always refer to the nest node.
 
@@ -228,19 +228,19 @@ Here is the behavior of the environment:
             moveAntsRepresentations
         }
         case AntGoesExploring(antId) ⇒ {
-            val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+            val antSprite = antRepresentation(antId)
             antSprite.goBack(false)
-            antSprite.actor ! Ant.AtIntersection(possibleEdges(nest))
+            antSprite.actor ! Ant.AtIntersection(possibleEdgesForward(nest))
         }
         case AntGoesBack(antId) ⇒ {
-            val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+            val antSprite = antRepresentation(antId)
             antSprite.goBack(true)
-            antSprite.actor ! Ant.AtIntersection(null)
+            antSprite.actor ! Ant.AtIntersection(possibleEdgesBackward(antSprite.lastFood))
         }
         case AntCrosses(antId, edgeId, antType, drop) ⇒ {
             fromViewer.pump
             val length = GraphPosLengthUtils.edgeLength(graph, edgeId)
-            val sprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+            val sprite = antRepresentation(antId)
 
             sprite.cross(edgeId, length)
 
@@ -296,4 +296,4 @@ All the protocol between the environment and the ants is explained above. All th
 
 Implementation note 1: this implementation can be seen as an academic treatment of the problem. We do not seek to be the fastest way to do it or the more complete with lots of parameters. Instead we try to be as simple as possible, and allowing experimentation. This is also a way to experiment on the actor model, which is remarkably suited for such "simulation" problems.
 
-Implementation note 2: the actor model is implicitly mutli-threaded, but rest assured that there is not one thread per actor. Instead, Akka uses a thread pool. Most of the time the thread pool is as large as your number of cores. This model gracefully scales according to your resources. This implies that your environment actor, the GUI and the ant actors will be allowed to run in distinct threads if possible, but two ants can run on the same thread for example. Future agent-based simulation platforms will probably investigate actors.
+Implementation note 2: the actor model is implicitly mutli-threaded, but rest assured that there is not one thread per actor. Instead, Akka uses a thread pool. Most of the time the thread pool is as large as your number of cores. This model gracefully scales according to your resources. This implies that your environment actor, the GUI and the ant actors will be allowed to run in distinct threads if possible, but two ants can run on the same thread for example.

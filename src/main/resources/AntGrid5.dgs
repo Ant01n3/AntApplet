@@ -128,6 +128,7 @@ cn "2_0" food ui.class="food" ui.label="Food1" foodType=0
 cn "0_4" food ui.class="food" ui.label="Food2" foodType=1
 cn "4_4" food ui.class="food" ui.label="Food3" foodType=2
 
+cg gamma 1.5
 cg antTypes=3
 cg antCount=80
 cg evaporation=0.995

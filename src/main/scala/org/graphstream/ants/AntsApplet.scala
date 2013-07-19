@@ -289,6 +289,9 @@ class Environment() extends Actor {
 		graph.getEachEdge.foreach { edge:Edge ⇒ edge.addAttribute(Ph, Pheromone(antTypes)) }
 	}
 
+	/** Utility method to retrieve the representation of an ant knowing its identifier. */
+	protected def antRepresentation(id:String) = sprites.getSprite(id).asInstanceOf[AntSprite]
+
 	/** Utility method to compute all the possible edges to explore leaving a given node. */
 	protected def possibleEdgesForward(node:Node):Array[EdgePheromones] = {
 		(node.getLeavingEdgeSet[Edge].map(edge ⇒ new EdgePheromones(edge))).toArray
@@ -392,19 +395,19 @@ class Environment() extends Actor {
 			moveAntsRepresentations
 		}
 		case AntGoesExploring(antId) ⇒ {
-			val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+			val antSprite = antRepresentation(antId)
 			antSprite.goBack(false)
 			antSprite.actor ! Ant.AtIntersection(possibleEdgesForward(nest))
 		}
 		case AntGoesBack(antId) ⇒ {
-			val antSprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+			val antSprite = antRepresentation(antId)
 			antSprite.goBack(true)
 			antSprite.actor ! Ant.AtIntersection(possibleEdgesBackward(antSprite.lastFood))
 		}
 		case AntCrosses(antId, edgeId, antType, drop) ⇒ {
 			fromViewer.pump
 			val length = GraphPosLengthUtils.edgeLength(graph, edgeId)
-			val sprite = sprites.getSprite(antId).asInstanceOf[AntSprite]
+			val sprite = antRepresentation(antId)
 
 			sprite.cross(edgeId, length)
 
