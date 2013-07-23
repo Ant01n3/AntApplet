@@ -134,10 +134,10 @@ cg antCount=80
 cg evaporation=0.995
 cg minPh=0.1
 cg maxPh=1.0
-cg phDrop=1
+cg phDrop=1.5
 cg beta=1.0
 cg alpha=1.2
 
 cg "ui.title"="Three Food Sources"
 cg "ui.antialias"
-cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: blue; } node.food { size: 15px; fill-color: green; } edge { size: 5px; fill-mode: dyn-plain; fill-color: white, grey, blue, red; } sprite { fill-color: red; } sprite.back { fill-color: green; }"
+cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: blue; } node.food { size: 15px; fill-color: green; } edge { size: 5px; fill-mode: dyn-plain; fill-color: white, grey, blue, red; } sprite { fill-color: green; } sprite.back { fill-color: red; }"

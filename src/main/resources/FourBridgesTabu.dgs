@@ -14,21 +14,24 @@ an G x=1 y=-5
 an H x=0 y=-6
 
 ae NestA Nest > A
-ae AB A > B
-ae AC A > C
-ae BD B > D
-ae CD C > D
-ae DE D > E
-ae EF E > F
-ae EG E > G
-ae FH F > H
-ae GH G > H
-ae HFood H > Food
+ae AB A B
+ae AC A C
+ae BD B D
+ae CD C D
+ae DE D E
+ae EF E F
+ae EG E G
+ae FH F H
+ae GH G H
+ae HFood H Food
 
 cg antCount=10
-cg phDrop=80
+cg phDrop=0.1
+cg gamma=0.0
 cg alpha=1.0
 cg beta=0.1
+cg useTabu
+cg noMemory
 
 cg "ui.title"="Asymmetric Bridges"
 cg "ui.antialias"

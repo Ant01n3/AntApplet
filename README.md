@@ -3,7 +3,7 @@ Ant Applet
 
 A very simple program that tries to demonstrate how ants find the shortest path between a nest and one (or more) food sources.
 
-The program uses [Scala](http://www.scala-lang.org/) and the [actor model](http://en.wikipedia.org/wiki/Actor_model) to represent the ants. It uses [GraphStream](http://graphstream-project.org/) to represent an environment actor (a graph representing the possible paths for the ants). Then each ant is an actor that takes orientation decisions each time it encounters an intersection based on informations stored on the edges. Ants use a model inspired by the works of Jean-Louis Deneubourg and Marco Dorigo.
+The program uses [Scala](http://www.scala-lang.org/) and the [actor model](http://en.wikipedia.org/wiki/Actor_model) to represent the ants. It uses [GraphStream](http://graphstream-project.org/) to represent an environment actor (a graph representing the possible paths for the ants). Then each ant is an actor that takes orientation decisions each time it encounters an intersection based on informations stored on the edges. This applet is inspired by the works of Jean-Louis Deneubourg, Frans Moyson, Bernard Manderick and Marco Dorigo.
 
 This readme contains the following information:
 
@@ -131,7 +131,7 @@ You can find more details about this on the [stylesheet documentation page](http
 The model
 ---------
 
-The model for the ant behavior is inspired by works from [Jean-Louis Deneubourg](http://www.ulb.ac.be/sciences/use/deneubourg%20publications.html) and [Marco Dorigo](http://www.scholarpedia.org/article/Ant_colony_optimization). The idea is that ants uses a constrained environment modeled as a graph. They start from a nest node and travel freely on the graph until they reach a food node. They consume this food and go back to the nest (following the same path or not) and dropping pheromones on it only when coming back.
+The model for the ant behavior is inspired by works from [Jean-Louis Deneubourg](http://www.ulb.ac.be/sciences/use/deneubourg%20publications.html), Frans Moyson, Bernard Manderick and [Marco Dorigo](http://www.scholarpedia.org/article/Ant_colony_optimization). The idea is that ants uses a constrained environment modeled as a graph. They start from a nest node and travel freely on the graph until they reach a food node. They consume this food and go back to the nest (following the same path or not) and dropping pheromones on it only when coming back.
 
 This model is inspired from nature and the works of Jean-Louis Deneubourg, but it departs from it on lots of points. First ants behavior is far more complex than that, they do not only use pheromones to choose their paths. Then the behavior depends on the species. 
 

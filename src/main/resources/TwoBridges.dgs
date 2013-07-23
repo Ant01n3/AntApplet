@@ -12,11 +12,12 @@ ae NestB Nest > B
 ae AFood A > Food
 ae BFood B > Food
 
-cg antCount=6
+cg antCount=4
+cg speed=0.07
 cg phDrop=2
 cg alpha=1.5
 cg beta=0.1
 
 cg "ui.title"="Asymetric Bridges"
 cg "ui.antialias"
-cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: grey; } node.food { size: 15px; fill-color: green; } edge { arrow-shape: none; size: 5px; fill-mode: dyn-plain; fill-color: grey, green, orange, red; } sprite { fill-color: red; } sprite.back { fill-color: green; }"
+cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: grey; } node.food { size: 15px; fill-color: green; } edge { arrow-shape: none; size: 5px; fill-mode: dyn-plain; fill-color: grey, green, orange, red; } sprite { fill-color: green; } sprite.back { fill-color: red; }"
