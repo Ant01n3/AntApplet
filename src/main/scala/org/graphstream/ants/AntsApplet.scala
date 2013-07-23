@@ -544,8 +544,10 @@ class Ant extends Actor {
 				sender ! Environment.AntReturning(id)
 			}
 
-			if(!useMemory && useTabu)
+			if(!useMemory && useTabu) {
 				resetMemory
+				println("reset memory")
+			}
 		}
 		case AtNest ⇒ {
 			exploration = true
@@ -576,8 +578,7 @@ class Ant extends Actor {
 	/** Push in memory the given `edge` and add its length to the path size. */
 	protected def memorize(edge:EdgePheromones) {
 		pathLength += edge.length
-		if(Ant.useMemory)
-			memory.push(edge)
+		memory.push(edge)
 	}
 
 	/** Ant identifier. */
@@ -644,7 +645,10 @@ class Ant extends Actor {
 	}
 
 	/** True if in exploration mode and the ??? */
-	protected def isTabu(edgeId:String):Boolean = (exploration == false && memory.contains(edgeId))
+	protected def isTabu(edgeId:String):Boolean = memory.find(_.id == edgeId) match {
+		case Some(_) => true
+		case None    => false
+	}
 
 	/** Quantity of pheromone to drop on edges. */
 	protected def dropQuantity():Double = if(gamma <= 0) phDrop else phDrop / pow(pathLength, gamma)
