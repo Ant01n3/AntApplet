@@ -24,7 +24,7 @@ object AntsApplet extends App {
 	protected val actorSystem = ActorSystem("Ants", ConfigFactory.parseMap(HashMap[String,AnyRef](("akka.scheduler.tick-duration" -> "10ms"))))
 	
 	/** Initial actor launching all others. */
-	protected val graph = actorSystem.actorOf(Props[Environment], name="graph")
+	protected val graph = actorSystem.actorOf(Props[Environment], name="environment")
 
 	args.length match {
 		case 0 ⇒ graph ! Environment.Start("/FourBridges.dgs", 10)
@@ -55,6 +55,9 @@ class AntSprite(id:String, manager:SpriteManager, initialPosition:Values) extend
 	/** Speed, set when crossing an edge according to the edge length. */
 	protected var speed = 0.0
 	
+	/** Type of represented ant. */
+	var antType = 0
+
 	/** Node identifier of destination, allows to orient the ant representation when moving. */
 	var to:Node = null
 
@@ -111,8 +114,8 @@ class AntSprite(id:String, manager:SpriteManager, initialPosition:Values) extend
 	def exploring(on:Boolean) {
 		returning = !on
 		if(on)
-		     removeAttribute("ui.class")
-		else setAttribute("ui.class", "back")
+		     setAttribute("ui.class", "exploring%d".format(antType))
+		else setAttribute("ui.class", "returning%d".format(antType))
 	}
 
 	/** Utility method, end-point node of the current edge (depends on the direction of the ant). */
@@ -333,10 +336,13 @@ class Environment() extends Actor {
 		val id     = "ant%d".format(n)
 		val sprite = sprites.addSprite(id).asInstanceOf[AntSprite]
 
-		sprite.to    = nest
-		sprite.actor = context.actorOf(Props[Ant], name=id)
+		sprite.to      = nest
+		sprite.actor   = context.actorOf(Props[Ant], name=id)
+		sprite.antType = n % antTypes
 		sprite.actor ! Ant.AntType(n % antTypes)
 		sprite.actor ! Ant.AtIntersection(possibleEdgesForward(nest))
+
+		sprite.exploring(true)
 	}
 
 	/** Utility to move a `node` to position (`x`, `y`). */
@@ -544,10 +550,8 @@ class Ant extends Actor {
 				sender ! Environment.AntReturning(id)
 			}
 
-			if(!useMemory && useTabu) {
+			if(!useMemory && useTabu)
 				resetMemory
-				println("reset memory")
-			}
 		}
 		case AtNest ⇒ {
 			exploration = true
@@ -586,7 +590,7 @@ class Ant extends Actor {
 
 	/** Choose the next edge to cross purely at random, each edge has
 	  * uniform probability to be chosen. */
-	protected def chooseNextEdgeRandom(edges:Array[EdgePheromones]):EdgePheromones = { edges(random.nextInt(edges.length)) }
+	protected def chooseNextEdgeRandom(edges:Array[EdgePheromones]):EdgePheromones = edges(random.nextInt(edges.length))
 	
 	/** Choose the next edge to cross according to pheromones and lengths of the edges using
 	  * a biased fortune wheel.
@@ -627,11 +631,9 @@ class Ant extends Actor {
 	  * order, or it will select the path back using the same mechanism as for
 	  * the forward path (using pheromone, edges lengths, etc.). */
 	protected def chooseNextEdgeBackward(edges:Array[EdgePheromones]):EdgePheromones = {
-		if(Ant.useMemory) {
-			memory.pop
-		} else {
-			chooseNextEdgeForward(edges)
-		}
+		if(Ant.useMemory)
+		     memory.pop
+		else chooseNextEdgeForward(edges)
 	}
 
 	/** Compute the weight of a potential edge. */

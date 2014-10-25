@@ -3,7 +3,7 @@ Ant Applet
 
 A very simple program that tries to demonstrate how ants find the shortest path between a nest and one (or more) food sources.
 
-The program uses [Scala](http://www.scala-lang.org/) and the [actor model](http://en.wikipedia.org/wiki/Actor_model) to represent the ants. It uses [GraphStream](http://graphstream-project.org/) to represent an environment actor (a graph representing the possible paths for the ants). Then each ant is an actor that takes orientation decisions each time it encounters an intersection based on informations stored on the edges. This applet is inspired by the works of Jean-Louis Deneubourg, Frans Moyson, Bernard Manderick and Marco Dorigo.
+The program uses [Scala](http://www.scala-lang.org/) and the [actor model](http://en.wikipedia.org/wiki/Actor_model) to represent the ants. It uses [GraphStream](http://graphstream-project.org/) to represent an environment actor (a graph representing the possible paths for the ants). Then each ant is an actor that takes orientation decisions each time it encounters an intersection based on informations stored on the edges. This applet is inspired by the works of Jean-Louis Deneubourg, Bernard Manderick, Guy Theraulaz and Marco Dorigo.
 
 This readme contains the following information:
 
@@ -32,9 +32,9 @@ To run it:
 
     run
 
-To package it as a standalone jar:
+To package it as a standalone jar (only for java version <= 1.7 actually):
 
-    proguard
+    proguard:proguard
 
 You then can find the jar in ``target/scala-2.10/antsapplet_2.10-0.1.min.jar`` or something similar.
 
@@ -74,7 +74,7 @@ Such a file must always start by a header:
 
     DGS004
 
-Then you must create nodes and edges and position them. Edges must be oriented, leaving the nest. This avoids ants to make loops and allow them to go back to the nest. This is a trick, but in nature ants use other ways to find their paths than only pheromones.
+Then you must create nodes and edges and position them. Edges must be oriented, leaving the nest. This avoids ants to make loops and allow them to go back to the nest during exploration. This is a trick, but in nature ants use other ways to find their paths than only pheromones. (in fact this limitation can be removed and ants can use a tabu list instead, but expect very bad convergence).
 
 Lets take a simple diamond shaped graph example with one nest, one food source and two paths to the food. First we add two nodes for
 the nest and the food. Each node or edge creation command must be on its own line (blank lines are allowed and ``#`` delimit comments that run until the end of the line).
@@ -86,7 +86,7 @@ The command ``an`` means "add node". The identifier of the node is ``Nest`` for 
 
 Then following the identifier are attributes. An attribute can be only a name or a name followed by an equal sign and a value. The attributes ``nest`` and ``food`` allow the applet to find the nest node (that must be unique, or else the first found one is used) and the food nodes (there can be several). These attribute do not need a value, they must be present.
 
-The two attributes ``ui.class`` and ``ui.label`` allow to change the appearance of these special nodes and to make some text appear next to them. 
+The two attributes ``ui.class`` and ``ui.label`` are for graphics only (as their ``ui`` prefix tells) and allow to change the appearance of these special nodes and to make some text appear next to them. 
 
 Finally the attributes ``x`` and ``y`` allow to position the nodes.
 
@@ -118,10 +118,11 @@ The command ``cg`` (change graph) will add the attribute ``antCount`` with a num
     cg evaporation=0.995 # The edge pheromone 'conservation' at each step.
     cg speed=0.1         # Speed of ants.
     cg noMemory          # If present the ants have no memory of their exploration path, else the ants will go back using exactly their exploration path.
+    cg useTabu           # Use a tabu list so that when exploring or returning an ant will try to avoid crossing an already used edge. Works even if noMemory is set.
 
 The values given above are the defaults. The evaporation rate is naturally tied to the number of ants.
 
-Finally you can change the appearance of the graph using a style sheet:
+Finally you can change the appearance of the graph using a style sheet, this is purely cosmetic:
 
     cg "ui.antialias"
     cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: grey; } node.food { size: 15px; fill-color: green; } edge { arrow-shape: none; size: 5px; fill-mode: dyn-plain; fill-color: grey, green, orange, red; } sprite { fill-color: red; } sprite.back { fill-color: green; }"
@@ -131,7 +132,7 @@ You can find more details about this on the [stylesheet documentation page](http
 The model
 ---------
 
-The model for the ant behavior is inspired by works from [Jean-Louis Deneubourg](http://www.ulb.ac.be/sciences/use/deneubourg%20publications.html), Frans Moyson, Bernard Manderick and [Marco Dorigo](http://www.scholarpedia.org/article/Ant_colony_optimization). The idea is that ants uses a constrained environment modeled as a graph. They start from a nest node and travel freely on the graph until they reach a food node. They consume this food and go back to the nest (following the same path or not) and dropping pheromones on it only when coming back.
+The model for the ant behavior is inspired by works from [Jean-Louis Deneubourg](http://www.ulb.ac.be/sciences/use/deneubourg%20publications.html), [Frans Moyson, Bernard Manderick](http://en.wikipedia.org/wiki/Artificial_Ants) and [Marco Dorigo](http://www.scholarpedia.org/article/Ant_colony_optimization). The idea is that ants uses a constrained environment modeled as a graph. They start from a nest node and travel freely on the graph until they reach a food node. They consume this food and go back to the nest (following the same path or not) and dropping pheromones on it only when coming back.
 
 This model is inspired from nature and the works of Jean-Louis Deneubourg, but it departs from it on lots of points. First ants behavior is far more complex than that, they do not only use pheromones to choose their paths. Then the behavior depends on the species. 
 
@@ -141,7 +142,7 @@ Each ant is an independent agent that travels from the nest in order to forage f
 
 Naturally the more ants used a path before, the more there is pheromone and therefore the more an ant will be influenced to follow this path. This positive feedback loop allows to build paths toward food.
 
-However pheromone tend to evaporate with time and must be regularly dropped on the path. If no more food is available at the end of the path, ants will not lay down pheromones and the path will disappear with time. This negative feedback mechanism allows ant to forget old non interesting paths.
+However pheromone tend to evaporate with time and must be regularly dropped on the path. If no more food is available at the end of the path, ants will not lay down pheromones and the path will disappear with time. This negative feedback mechanism allows ant to "forget" old non interesting paths.
 
 As ants travel on edges at a constant speed, ants using shorter paths
 will reach food faster, and if they use the same path to go back to
@@ -166,6 +167,8 @@ When an ant encounters an intersection it considers each edge and determines a w
 
 You can see that the ant is not only influenced by the pheromone present on the edge, it also follows a kind of greedy algorithm by preferring short edges than long ones if ``beta`` is not zero. This is a not a good strategy to find shortest paths alone, but coupled with pheromones it may improves things. You can however completely remove this behavior by setting ``beta`` at zero.
 
+If the ant uses a tabu list, it must avoid to re-use an edge, therefore its weight is set to zero if it is tabu. When all edges have zero weights, the next edge is chosen randomly and uniformly.
+
 Ants drop pheromones on their path only when going back. The quantity of pheromone dropped on each edge is given by parameter ``phDrop`` and modified by parameter ``gamma``. If ``gamma`` is zero, 
 the quantity dropped is the constant ``phDrop`` else we use the formula:
 
@@ -182,7 +185,7 @@ Be careful that ``phDrop`` depends on several things:
 
 Therefore the two most important parameters that you must change for each network is ``antCount`` and ``phDrop``.
 
-There is another parameter nammed ``noMemory``. This parameter allows to choose if the ant, once it has found food, will go back to the nest using the same path it used to find food or using another path. When using memory, when returning to the nest, ants will use their memory to travel back to the nest using edges in reverse order in their memory. They do not do any choice. When not using memory, ants use the same formula as when searching for food to evaluate which edge to choose. Most of the time, when you use ``noMemory`` you also want to set ``gamma`` to zero, since the ant will not necessarily use the same path as during exploration when returning to the nest, it is not interesting to drop a quantity of pheromone that depends on the path length.
+There is another parameter named ``noMemory``. This parameter allows to choose if the ant, once it has found food, will go back to the nest using the same path it used to find food or using another path. When using memory, when returning to the nest, ants will use their memory to travel back to the nest using edges in reverse order in their memory. They do not do any choice. When not using memory, ants use the same formula as when searching for food to evaluate which edge to choose. Most of the time, when you use ``noMemory`` you also want to set ``gamma`` to zero, since the ant will not necessarily use the same path as during exploration when returning to the nest, it is not interesting to drop a quantity of pheromone that depends on the path length.
 
 The implementation
 ------------------

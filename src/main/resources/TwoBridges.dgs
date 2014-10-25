@@ -20,4 +20,4 @@ cg beta=0.1
 
 cg "ui.title"="Asymetric Bridges"
 cg "ui.antialias"
-cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: grey; } node.food { size: 15px; fill-color: green; } edge { arrow-shape: none; size: 5px; fill-mode: dyn-plain; fill-color: grey, green, orange, red; } sprite { fill-color: green; } sprite.back { fill-color: red; }"
+cg "ui.stylesheet"="node { fill-color: grey; } node.nest { size: 15px; fill-color: grey; } node.food { size: 15px; fill-color: green; } edge { arrow-shape: none; size: 5px; fill-mode: dyn-plain; fill-color: grey, green, orange, red; } sprite.exploring0 { fill-color: green; } sprite.returning0 { fill-color: red; }"
