@@ -36,17 +36,17 @@ To package it as a standalone jar (only for java version <= 1.7 actually):
 
     proguard:proguard
 
-You then can find the jar in ``target/scala-2.10/antsapplet_2.10-0.1.min.jar`` or something similar.
+You then can find the jar in ``target/scala-2.11/antsapplet_2.11-0.1.min.jar`` or something similar.
 
 Launching the applet when using this jar:
 
-    java -jar antsapplet_2.10-0.1.min.jar
+    java -jar antsapplet_2.11-0.1.min.jar
 
 To create the API documentation:
 
     doc 
 
-You can then find the documentation in ``target/scala-2.10/api``.
+You can then find the documentation in ``target/scala-2.11/api``.
 
 How to change the graph
 -----------------------
